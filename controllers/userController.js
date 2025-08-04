@@ -1,6 +1,6 @@
 import userModel from "../modals/userModel.js";
 import jwt from 'jsonwebtoken'
-import bcryptjs from 'bcryptjs'
+import bcrypt from 'bcryptjs';
 import validator from 'validator'
 
 // LOGIN USER
@@ -14,7 +14,7 @@ const loginUser = async (req, res) => {
         }
 
         // MATCHING USER AND PASSWORD
-        const isMatch = await bycrypt.compare(password, user.password);
+        const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.json({ success: false, message: "Invalid Credentials" })
         }
@@ -54,8 +54,8 @@ const registerUser = async (req, res) => {
         }
 
         // HASING USER PASSWORD
-        const salt = await bycrypt.genSalt(10)
-        const hashedPassword = await bycrypt.hash(password, salt);
+        const salt = await bcrypt.genSalt(10)
+        const hashedPassword = await bcrypt.hash(password, salt);
 
         // NEW USER 
         const newUser = new userModel({
