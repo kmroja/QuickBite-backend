@@ -21,7 +21,7 @@ const __dirname = path.dirname(__filename);
 app.use(
     cors({
         origin: (origin, callback) => {
-            const allowedOrigins = ['https://quickbite-frontendapp.netlify.app', 'http://localhost:5174'];
+            const allowedOrigins = ['https://quickbite-frontendapp.netlify.app', 'http://localhost:5173'];
             if (!origin || allowedOrigins.includes(origin)) {
                 callback(null, true);
             } else {
