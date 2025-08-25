@@ -10,6 +10,7 @@ import userRouter from './routes/userRoute.js'
 import cartRouter from './routes/cartRoute.js'
 import itemRouter from './routes/itemRoute.js';
 import orderRouter from './routes/orderRoute.js';
+import reviewRoutes from "./routes/reviewRoutes.js";
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -44,6 +45,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/cart', cartRouter)
 app.use('/api/items', itemRouter);
 app.use('/api/orders', orderRouter);
+app.use("/api/reviews", reviewRoutes);
 
 app.get('/', (req, res) => {
     res.send('API WORKING');
