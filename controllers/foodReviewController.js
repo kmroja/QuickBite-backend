@@ -1,5 +1,5 @@
-import FoodReview from "../models/foodReviewModel.js";
-import Item from "../models/itemModel.js"; // if you have an Item model
+import FoodReview from "../modals/foodReviewModal.js";
+import Item from "../modals/item.js"; // if you have an Item model
 
 // Add a food review
 export const addFoodReview = async (req, res) => {
