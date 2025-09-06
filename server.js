@@ -56,7 +56,7 @@ app.use("/api/reviews", reviewRoutes);
 
 // NEW: Mount food review routes (per-item)
 app.use("/api/items", foodReviewRoutes);
-
+app.use("/api/food-review", foodReviewRoutes);
 app.get('/', (req, res) => {
     res.send('API WORKING');
 })
