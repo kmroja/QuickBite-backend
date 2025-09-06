@@ -1,4 +1,3 @@
-// models/foodReviewModel.js
 import mongoose from "mongoose";
 
 const foodReviewSchema = new mongoose.Schema(

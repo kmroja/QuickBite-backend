@@ -12,6 +12,9 @@ import itemRouter from './routes/itemRoute.js';
 import orderRouter from './routes/orderRoute.js';
 import reviewRoutes from "./routes/reviewRoutes.js";
 
+// NEW: Food review routes
+import foodReviewRoutes from "./routes/foodReviewRoutes.js";
+
 const app = express();
 const port = process.env.PORT || 4000;
 
@@ -22,7 +25,11 @@ const __dirname = path.dirname(__filename);
 app.use(
     cors({
         origin: (origin, callback) => {
-            const allowedOrigins = ['https://quickbite-frontendapp.netlify.app', 'https://quickbite-adminapp.netlify.app','http://localhost:5173'];
+            const allowedOrigins = [
+                'https://quickbite-frontendapp.netlify.app', 
+                'https://quickbite-adminapp.netlify.app',
+                'http://localhost:5173'
+            ];
             if (!origin || allowedOrigins.includes(origin)) {
                 callback(null, true);
             } else {
@@ -46,6 +53,9 @@ app.use('/api/cart', cartRouter)
 app.use('/api/items', itemRouter);
 app.use('/api/orders', orderRouter);
 app.use("/api/reviews", reviewRoutes);
+
+// NEW: Mount food review routes (per-item)
+app.use("/api/items", foodReviewRoutes);
 
 app.get('/', (req, res) => {
     res.send('API WORKING');
