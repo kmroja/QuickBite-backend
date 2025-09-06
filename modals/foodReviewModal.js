@@ -10,5 +10,7 @@ const foodReviewSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const FoodReview = mongoose.model("FoodReview", foodReviewSchema);
+// ✅ Fix: check if model already exists
+const FoodReview = mongoose.models.FoodReview || mongoose.model("FoodReview", foodReviewSchema);
+
 export default FoodReview;
