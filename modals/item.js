@@ -15,13 +15,15 @@ const itemSchema = new mongoose.Schema(
     description: { type: String, required: true },
     category: { type: String, required: true },
     price: { type: Number, required: true },
-    rating: { type: Number, default: 0 },
+    rating: { type: Number, default: 0 }, // average rating
     hearts: { type: Number, default: 0 },
-    total: { type: Number, default: 0 },
+    totalReviews: { type: Number, default: 0 }, // count of reviews
     imageUrl: { type: String },
-    reviews: [reviewSchema], // 👈 Add this
+    reviews: [reviewSchema], // ⬅ embedded reviews
   },
   { timestamps: true }
 );
 
-export default mongoose.model("Item", itemSchema);
+const Item = mongoose.models.Item || mongoose.model("Item", itemSchema);
+
+export default Item;

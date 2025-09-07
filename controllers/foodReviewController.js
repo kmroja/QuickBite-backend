@@ -1,8 +1,6 @@
-import FoodReview from "../modals/foodReviewModal.js";
-import Item from "../modals/item.js";
-import mongoose from "mongoose";
+import Item from "../models/item.js";
 
-// Add a food review
+// ➕ Add a review directly inside an item
 export const addFoodReview = async (req, res) => {
   try {
     const { rating, comment } = req.body;
@@ -13,50 +11,55 @@ export const addFoodReview = async (req, res) => {
       return res.status(400).json({ message: "Rating and comment required" });
     }
 
-    const review = await FoodReview.create({
-      user: userId,
-      item: itemId,
-      rating,
-      comment,
-    });
-
-    // Update avg rating for item
-    const stats = await FoodReview.aggregate([
-      { $match: { item: new mongoose.Types.ObjectId(itemId) } },
-      {
-        $group: {
-          _id: "$item",
-          avgRating: { $avg: "$rating" },
-          total: { $sum: 1 },
-        },
-      },
-    ]);
-
-    if (stats.length > 0) {
-      await Item.findByIdAndUpdate(itemId, {
-        rating: stats[0].avgRating,
-        totalReviews: stats[0].total,
-      });
+    // ✅ Find the item
+    const item = await Item.findById(itemId);
+    if (!item) {
+      return res.status(404).json({ message: "Item not found" });
     }
 
-    res.status(201).json({ message: "Review added", review });
+    // ✅ Check if this user already reviewed
+    const alreadyReviewed = item.reviews.find(
+      (rev) => rev.user.toString() === userId.toString()
+    );
+    if (alreadyReviewed) {
+      return res.status(400).json({ message: "You already reviewed this item" });
+    }
+
+    // ✅ Push review
+    const newReview = {
+      user: userId,
+      rating,
+      comment,
+    };
+    item.reviews.push(newReview);
+
+    // ✅ Recalculate avg rating + totalReviews
+    item.totalReviews = item.reviews.length;
+    item.rating =
+      item.reviews.reduce((acc, r) => acc + r.rating, 0) / item.totalReviews;
+
+    await item.save();
+
+    res.status(201).json({ message: "Review added successfully", reviews: item.reviews });
   } catch (err) {
-    console.error(err);
+    console.error("❌ Error adding review:", err);
     res.status(500).json({ message: "Error adding review", error: err.message });
   }
 };
 
-// Get all reviews for a specific item
+// 📖 Get all reviews for an item
 export const getItemReviews = async (req, res) => {
   try {
     const itemId = req.params.id;
-    const reviews = await FoodReview.find({ item: itemId })
-      .populate("user", "name email")
-      .sort({ createdAt: -1 });
+    const item = await Item.findById(itemId).populate("reviews.user", "name email");
 
-    res.status(200).json(reviews);
+    if (!item) {
+      return res.status(404).json({ message: "Item not found" });
+    }
+
+    res.status(200).json(item.reviews);
   } catch (err) {
-    console.error(err);
+    console.error("❌ Error fetching reviews:", err);
     res.status(500).json({ message: "Error fetching reviews", error: err.message });
   }
 };
