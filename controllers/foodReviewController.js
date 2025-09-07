@@ -1,5 +1,6 @@
 import FoodReview from "../modals/foodReviewModal.js";
-import Item from "../modals/item.js"; // if you have an Item model
+import Item from "../modals/item.js";
+import mongoose from "mongoose";
 
 // Add a food review
 export const addFoodReview = async (req, res) => {
@@ -18,6 +19,25 @@ export const addFoodReview = async (req, res) => {
       rating,
       comment,
     });
+
+    // Update avg rating for item
+    const stats = await FoodReview.aggregate([
+      { $match: { item: new mongoose.Types.ObjectId(itemId) } },
+      {
+        $group: {
+          _id: "$item",
+          avgRating: { $avg: "$rating" },
+          total: { $sum: 1 },
+        },
+      },
+    ]);
+
+    if (stats.length > 0) {
+      await Item.findByIdAndUpdate(itemId, {
+        rating: stats[0].avgRating,
+        totalReviews: stats[0].total,
+      });
+    }
 
     res.status(201).json({ message: "Review added", review });
   } catch (err) {
