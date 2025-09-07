@@ -1,4 +1,4 @@
-import Item from "../models/item.js";
+import Item from "../modals/item.js";
 
 // ➕ Add a review directly inside an item
 export const addFoodReview = async (req, res) => {
