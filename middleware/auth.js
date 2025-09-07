@@ -14,7 +14,7 @@ const authMiddleware = (roles = []) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
       req.user = {
-        _id: decoded._id,
+        _id: decoded._id || decoded.id, // ✅ FIXED
         email: decoded.email,
         role: decoded.role,
       };

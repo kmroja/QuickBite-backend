@@ -4,11 +4,15 @@ import Item from "../modals/item.js";
 export const addFoodReview = async (req, res) => {
   try {
     const { rating, comment } = req.body;
-    const userId = req.user._id;
+    const userId = req.user?._id; // ✅ safe access
     const itemId = req.params.id;
 
     if (!rating || !comment) {
       return res.status(400).json({ message: "Rating and comment required" });
+    }
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized: user not found in token" });
     }
 
     // ✅ Find the item
@@ -19,18 +23,14 @@ export const addFoodReview = async (req, res) => {
 
     // ✅ Check if this user already reviewed
     const alreadyReviewed = item.reviews.find(
-      (rev) => rev.user.toString() === userId.toString()
+      (rev) => rev.user && rev.user.toString() === userId.toString()
     );
     if (alreadyReviewed) {
       return res.status(400).json({ message: "You already reviewed this item" });
     }
 
     // ✅ Push review
-    const newReview = {
-      user: userId,
-      rating,
-      comment,
-    };
+    const newReview = { user: userId, rating, comment };
     item.reviews.push(newReview);
 
     // ✅ Recalculate avg rating + totalReviews
