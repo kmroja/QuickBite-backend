@@ -55,8 +55,8 @@ const orderSchema = new mongoose.Schema({
   // Order Status Tracking
   status: {
     type: String,
-    enum: ['processing', 'outForDelivery', 'delivered'],
-    default: 'processing',
+    enum: ["processing", "outForDelivery", "delivered", "succeeded"], // add it here
+    default: "processing",
     index: true
   },
   expectedDelivery: Date,
