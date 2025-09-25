@@ -22,23 +22,24 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // MIDDLEWARE 
-app.use(
-    cors({
-        origin: (origin, callback) => {
-            const allowedOrigins = [
-                'https://quickbite-frontendapp.netlify.app', 
-                'https://quickbite-adminapp.netlify.app',
-                'http://localhost:5173'
-            ];
-            if (!origin || allowedOrigins.includes(origin)) {
-                callback(null, true);
-            } else {
-                callback(new Error('Not allowed by CORS'));
-            }
-        },
-        credentials: true,
-    })
-);
+const allowedOrigins = [
+    'https://quickbite-frontendapp.netlify.app',
+    'https://quickbite-adminapp.netlify.app',
+    'http://localhost:5173'
+];
+
+app.use(cors({
+    origin: function (origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            console.log('Blocked by CORS:', origin);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true
+}));
+
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -55,7 +56,7 @@ app.use('/api/orders', orderRouter);
 app.use("/api/reviews", reviewRoutes);
 
 // NEW: Mount food review routes (per-item)
-app.use("/api/items", foodReviewRoutes);
+// app.use("/api/items", foodReviewRoutes);
 app.use("/api/food-review", foodReviewRoutes);
 app.get('/', (req, res) => {
     res.send('API WORKING');
