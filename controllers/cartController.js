@@ -28,6 +28,7 @@ export const getCart = asyncHandler(async (req, res) => {
 
 // POST /api/cart
 export const addToCart = asyncHandler(async (req, res) => {
+    console.log("➡️ addToCart called", req.user?._id, req.body);
     const { itemId, quantity } = req.body;
     console.log("POST /api/cart called by user:", req.user?._id, "with body:", req.body);
 
