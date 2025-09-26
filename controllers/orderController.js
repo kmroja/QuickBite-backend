@@ -18,7 +18,6 @@ export const createOrder = async (req, res) => {
             return res.status(400).json({ message: 'Invalid or empty items array' });
         }
 
-       
         const orderItems = items.map(({ item, name, price, imageUrl, quantity }) => {
             const base = item || {};
             return {
@@ -31,7 +30,6 @@ export const createOrder = async (req, res) => {
             };
         });
 
-    
         const shippingCost = 0;
         let newOrder;
 
@@ -84,12 +82,11 @@ export const createOrder = async (req, res) => {
         res.status(201).json({ order: newOrder, checkoutUrl: null });
     } catch (error) {
         console.error('createOrder error:', error);
-       
         res.status(500).json({ message: 'Server Error', error: error.message });
     }
 };
 
-
+// Confirm Payment
 export const confirmPayment = async (req, res) => {
     try {
         const { session_id } = req.query;
@@ -99,7 +96,7 @@ export const confirmPayment = async (req, res) => {
         if (session.payment_status === 'paid') {
             const order = await Order.findOneAndUpdate(
                 { sessionId: session_id },
-                { paymentStatus: 'succeeded' },
+                { paymentStatus: 'succeeded' }, // ✅ update only paymentStatus
                 { new: true }
             );
             if (!order) return res.status(404).json({ message: 'Order not found' });
@@ -107,7 +104,7 @@ export const confirmPayment = async (req, res) => {
         }
         return res.status(400).json({ message: 'Payment not completed' });
     } catch (err) {
-        console.error(err);
+        console.error('confirmPayment error:', err);
         res.status(500).json({ message: 'Server Error', error: err.message });
     }
 };
@@ -118,7 +115,6 @@ export const getOrders = async (req, res) => {
         const filter = { user: req.user._id };
         const rawOrders = await Order.find(filter).sort({ createdAt: -1 }).lean();
 
-       
         const formatted = rawOrders.map(o => ({
             ...o,
             items: o.items.map(i => ({
@@ -137,12 +133,10 @@ export const getOrders = async (req, res) => {
     }
 };
 
+// Get All Orders (Admin)
 export const getAllOrders = async (req, res) => {
     try {
-        const raw = await Order
-            .find({})
-            .sort({ createdAt: -1 })
-            .lean();
+        const raw = await Order.find({}).sort({ createdAt: -1 }).lean();
 
         const formatted = raw.map(o => ({
             _id: o._id,
@@ -151,17 +145,13 @@ export const getAllOrders = async (req, res) => {
             lastName: o.lastName,
             email: o.email,
             phone: o.phone,
-
-            // ← ADD these three:
             address: o.address ?? o.shippingAddress?.address ?? '',
             city: o.city ?? o.shippingAddress?.city ?? '',
             zipCode: o.zipCode ?? o.shippingAddress?.zipCode ?? '',
-
             paymentMethod: o.paymentMethod,
             paymentStatus: o.paymentStatus,
             status: o.status,
             createdAt: o.createdAt,
-
             items: o.items.map(i => ({
                 _id: i._id,
                 item: i.item,
@@ -176,25 +166,34 @@ export const getAllOrders = async (req, res) => {
     }
 };
 
-
-
+// Update Any Order (Admin)
 export const updateAnyOrder = async (req, res) => {
     try {
-        const updated = await Order.findByIdAndUpdate(
-            req.params.id,
-            req.body,
-            { new: true, runValidators: true }
-        );
-        if (!updated) {
-            return res.status(404).json({ message: 'Order not found' });
-        }
-        res.json(updated);
+        const order = await Order.findById(req.params.id);
+        if (!order) return res.status(404).json({ message: 'Order not found' });
+
+        // Only allow valid fields
+        const allowedFields = ['status', 'paymentStatus', 'expectedDelivery', 'deliveredAt'];
+        allowedFields.forEach(field => {
+            if (req.body[field] !== undefined) {
+                if (field === 'status' && !['processing','outForDelivery','delivered'].includes(req.body[field])) {
+                    throw new Error(`Invalid value for status: ${req.body[field]}`);
+                }
+                if (field === 'paymentStatus' && !['pending','succeeded','failed'].includes(req.body[field])) {
+                    throw new Error(`Invalid value for paymentStatus: ${req.body[field]}`);
+                }
+                order[field] = req.body[field];
+            }
+        });
+
+        await order.save();
+        res.json(order);
+
     } catch (error) {
         console.error('updateAnyOrder error:', error);
         res.status(500).json({ message: 'Server Error', error: error.message });
     }
 };
-
 
 // Get Order by ID
 export const getOrderById = async (req, res) => {
@@ -216,7 +215,7 @@ export const getOrderById = async (req, res) => {
     }
 };
 
-// Update Order
+// Update Order (User)
 export const updateOrder = async (req, res) => {
     try {
         const order = await Order.findById(req.params.id);

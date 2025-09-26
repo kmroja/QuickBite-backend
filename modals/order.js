@@ -1,20 +1,22 @@
 // models/order.js
 import mongoose from 'mongoose';
 
+// Nested order item schema
 const orderItemSchema = new mongoose.Schema({
   item: {
     name: { type: String, required: true },
     price: { type: Number, required: true, min: 0 },
-    imageUrl: { type: String, required: true }
+    imageUrl: { type: String, required: true },
   },
-  quantity: { type: Number, required: true, min: 1 }
+  quantity: { type: Number, required: true, min: 1 },
 }, { _id: true });
 
+// Main order schema
 const orderSchema = new mongoose.Schema({
   // User Information
   user: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    ref: 'User',
   },
   email: { type: String, required: true, index: true },
   firstName: { type: String, required: true },
@@ -26,7 +28,7 @@ const orderSchema = new mongoose.Schema({
   city: { type: String, required: true },
   zipCode: { type: String, required: true },
 
-  // Order Items (nested item object)
+  // Order Items
   items: [orderItemSchema],
 
   // Payment Details
@@ -34,16 +36,16 @@ const orderSchema = new mongoose.Schema({
     type: String,
     required: true,
     enum: ["cod", "online", "card", "upi"],
-    index: true
+    index: true,
   },
   paymentIntentId: { type: String },
   sessionId: { type: String, index: true },
   transactionId: { type: String },
   paymentStatus: {
     type: String,
-    enum: ["pending", "succeeded", "failed"],
-  default: "pending",
-    index: true
+    enum: ["pending", "succeeded", "failed"], // ✅ correct enum for payment
+    default: "pending",
+    index: true,
   },
 
   // Order Calculations
@@ -52,24 +54,26 @@ const orderSchema = new mongoose.Schema({
   shipping: { type: Number, required: true, min: 0, default: 0 },
   total: { type: Number, required: true, min: 0 },
 
-  // Order Status Tracking
+  // Order Status Workflow
   status: {
     type: String,
-    enum: ["processing", "outForDelivery", "delivered"],
-  default: "processing",
-    index: true
+    enum: ["processing", "outForDelivery", "delivered"], // ✅ order workflow
+    default: "processing",
+    index: true,
   },
   expectedDelivery: Date,
   deliveredAt: Date,
 
   // Timestamps
   createdAt: { type: Date, default: Date.now, index: true },
-  updatedAt: { type: Date, default: Date.now }
+  updatedAt: { type: Date, default: Date.now },
 });
 
+// Indexes for fast queries
 orderSchema.index({ user: 1, createdAt: -1 });
 orderSchema.index({ status: 1, paymentStatus: 1 });
 
+// Update updatedAt automatically
 orderSchema.pre('save', function (next) {
   this.updatedAt = new Date();
   next();
