@@ -94,26 +94,26 @@ export const confirmPayment = async (req, res) => {
 
         const session = await stripe.checkout.sessions.retrieve(session_id);
         if (session.payment_status === 'paid') {
-            const order = await Order.findOneAndUpdate(
-                { sessionId: session_id },
-                { paymentStatus: 'succeeded' }, // ✅ update only paymentStatus
-                { new: true }
-            );
+            const order = await Order.findOne({ sessionId: session_id });
             if (!order) return res.status(404).json({ message: 'Order not found' });
+
+            // Update only paymentStatus
+            order.paymentStatus = 'succeeded';
+            await order.save();
+
             return res.json(order);
         }
         return res.status(400).json({ message: 'Payment not completed' });
     } catch (err) {
-        console.error('confirmPayment error:', err);
+        console.error(err);
         res.status(500).json({ message: 'Server Error', error: err.message });
     }
 };
 
-// Get Orders
+// Get Orders for current user
 export const getOrders = async (req, res) => {
     try {
-        const filter = { user: req.user._id };
-        const rawOrders = await Order.find(filter).sort({ createdAt: -1 }).lean();
+        const rawOrders = await Order.find({ user: req.user._id }).sort({ createdAt: -1 }).lean();
 
         const formatted = rawOrders.map(o => ({
             ...o,
@@ -172,23 +172,27 @@ export const updateAnyOrder = async (req, res) => {
         const order = await Order.findById(req.params.id);
         if (!order) return res.status(404).json({ message: 'Order not found' });
 
-        // Only allow valid fields
-        const allowedFields = ['status', 'paymentStatus', 'expectedDelivery', 'deliveredAt'];
-        allowedFields.forEach(field => {
-            if (req.body[field] !== undefined) {
-                if (field === 'status' && !['processing','outForDelivery','delivered'].includes(req.body[field])) {
-                    throw new Error(`Invalid value for status: ${req.body[field]}`);
-                }
-                if (field === 'paymentStatus' && !['pending','succeeded','failed'].includes(req.body[field])) {
-                    throw new Error(`Invalid value for paymentStatus: ${req.body[field]}`);
-                }
-                order[field] = req.body[field];
+        const { status, paymentStatus, expectedDelivery, deliveredAt } = req.body;
+
+        if (status !== undefined) {
+            if (!['processing','outForDelivery','delivered'].includes(status)) {
+                return res.status(400).json({ message: `Invalid status value: ${status}` });
             }
-        });
+            order.status = status;
+        }
+
+        if (paymentStatus !== undefined) {
+            if (!['pending','succeeded','failed'].includes(paymentStatus)) {
+                return res.status(400).json({ message: `Invalid paymentStatus value: ${paymentStatus}` });
+            }
+            order.paymentStatus = paymentStatus;
+        }
+
+        if (expectedDelivery !== undefined) order.expectedDelivery = expectedDelivery;
+        if (deliveredAt !== undefined) order.deliveredAt = deliveredAt;
 
         await order.save();
         res.json(order);
-
     } catch (error) {
         console.error('updateAnyOrder error:', error);
         res.status(500).json({ message: 'Server Error', error: error.message });
@@ -201,13 +205,10 @@ export const getOrderById = async (req, res) => {
         const order = await Order.findById(req.params.id);
         if (!order) return res.status(404).json({ message: 'Order not found' });
 
-        if (!order.user.equals(req.user._id)) {
-            return res.status(403).json({ message: 'Access denied' });
-        }
+        if (!order.user.equals(req.user._id)) return res.status(403).json({ message: 'Access denied' });
 
-        if (req.query.email && order.email !== req.query.email) {
-            return res.status(403).json({ message: 'Access denied' });
-        }
+        if (req.query.email && order.email !== req.query.email) return res.status(403).json({ message: 'Access denied' });
+
         res.json(order);
     } catch (error) {
         console.error('getOrderById error:', error);
@@ -221,15 +222,17 @@ export const updateOrder = async (req, res) => {
         const order = await Order.findById(req.params.id);
         if (!order) return res.status(404).json({ message: 'Order not found' });
 
-        if (!order.user.equals(req.user._id)) {
-            return res.status(403).json({ message: 'Access denied' });
-        }
+        if (!order.user.equals(req.user._id)) return res.status(403).json({ message: 'Access denied' });
 
-        if (req.body.email && order.email !== req.body.email) {
-            return res.status(403).json({ message: 'Access denied' });
-        }
-        const updated = await Order.findByIdAndUpdate(req.params.id, req.body, { new: true });
-        res.json(updated);
+        if (req.body.email && order.email !== req.body.email) return res.status(403).json({ message: 'Access denied' });
+
+        const { status, paymentStatus, expectedDelivery, deliveredAt, ...allowedFields } = req.body;
+
+        // Only allow user to update fields other than status/paymentStatus
+        Object.assign(order, allowedFields);
+
+        await order.save();
+        res.json(order);
     } catch (error) {
         console.error('updateOrder error:', error);
         res.status(500).json({ message: 'Server Error', error: error.message });
