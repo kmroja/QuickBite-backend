@@ -1,9 +1,13 @@
 import asyncHandler from 'express-async-handler';
 import { CartItem } from '../modals/cartItem.js';
 
-// ✅ GET /api/cart
+// GET /api/cart
 export const getCart = asyncHandler(async (req, res) => {
     console.log("GET /api/cart called by user:", req.user?._id);
+
+    if (!req.user?._id) {
+        return res.status(400).json({ message: "User not authenticated" });
+    }
 
     try {
         const items = await CartItem.find({ user: req.user._id }).populate('item');
@@ -11,7 +15,7 @@ export const getCart = asyncHandler(async (req, res) => {
 
         const formatted = items.map(ci => ({
             _id: ci._id.toString(),
-            item: ci.item || null, // avoid crash if item deleted
+            item: ci.item || null,
             quantity: ci.quantity,
         }));
 
@@ -22,13 +26,13 @@ export const getCart = asyncHandler(async (req, res) => {
     }
 });
 
-// ✅ POST /api/cart
+// POST /api/cart
 export const addToCart = asyncHandler(async (req, res) => {
     const { itemId, quantity } = req.body;
     console.log("POST /api/cart called by user:", req.user?._id, "with body:", req.body);
 
+    if (!req.user?._id) return res.status(400).json({ message: "User not authenticated" });
     if (!itemId || typeof quantity !== 'number') {
-        console.warn("Invalid request body:", req.body);
         res.status(400);
         throw new Error('itemId and quantity (number) are required');
     }
@@ -72,15 +76,16 @@ export const addToCart = asyncHandler(async (req, res) => {
     }
 });
 
-// ✅ PUT /api/cart/:id
+// PUT /api/cart/:id
 export const updateCartItem = asyncHandler(async (req, res) => {
     const { quantity } = req.body;
     console.log("PUT /api/cart/:id called by user:", req.user?._id, "id:", req.params.id, "quantity:", quantity);
 
+    if (!req.user?._id) return res.status(400).json({ message: "User not authenticated" });
+
     try {
         const cartItem = await CartItem.findOne({ _id: req.params.id, user: req.user._id });
         if (!cartItem) {
-            console.warn("Cart item not found:", req.params.id);
             res.status(404);
             throw new Error('Cart item not found');
         }
@@ -89,7 +94,6 @@ export const updateCartItem = asyncHandler(async (req, res) => {
         await cartItem.save();
         await cartItem.populate('item');
 
-        console.log("Cart item updated:", cartItem._id);
         res.json({
             _id: cartItem._id.toString(),
             item: cartItem.item || null,
@@ -101,14 +105,15 @@ export const updateCartItem = asyncHandler(async (req, res) => {
     }
 });
 
-// ✅ DELETE /api/cart/:id
+// DELETE /api/cart/:id
 export const deleteCartItem = asyncHandler(async (req, res) => {
     console.log("DELETE /api/cart/:id called by user:", req.user?._id, "id:", req.params.id);
+
+    if (!req.user?._id) return res.status(400).json({ message: "User not authenticated" });
 
     try {
         const cartItem = await CartItem.findOne({ _id: req.params.id, user: req.user._id });
         if (!cartItem) {
-            console.warn("Cart item not found:", req.params.id);
             res.status(404);
             throw new Error('Cart item not found');
         }
@@ -122,9 +127,11 @@ export const deleteCartItem = asyncHandler(async (req, res) => {
     }
 });
 
-// ✅ POST /api/cart/clear
+// POST /api/cart/clear
 export const clearCart = asyncHandler(async (req, res) => {
     console.log("POST /api/cart/clear called by user:", req.user?._id);
+
+    if (!req.user?._id) return res.status(400).json({ message: "User not authenticated" });
 
     try {
         await CartItem.deleteMany({ user: req.user._id });
