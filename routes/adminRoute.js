@@ -141,5 +141,33 @@ router.put("/orders/:id", async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to update order" });
   }
 });
+// ✏️ PUT /api/admin/users/:id
+router.put("/users/:id", async (req, res) => {
+  try {
+    const { username, email, role } = req.body;
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.id,
+      { username, email, role },
+      { new: true, runValidators: true, select: "-password" }
+    );
+    if (!updatedUser) return res.status(404).json({ message: "User not found" });
+    res.json(updatedUser);
+  } catch (err) {
+    console.error("PUT /users/:id error:", err);
+    res.status(500).json({ message: "Failed to update user" });
+  }
+});
+
+// ❌ DELETE /api/admin/users/:id
+router.delete("/users/:id", async (req, res) => {
+  try {
+    const deleted = await User.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ message: "User not found" });
+    res.json({ message: "User deleted successfully" });
+  } catch (err) {
+    console.error("DELETE /users/:id error:", err);
+    res.status(500).json({ message: "Failed to delete user" });
+  }
+});
 
 export default router;
