@@ -11,7 +11,7 @@ import cartRouter from './routes/cartRoute.js'
 import itemRouter from './routes/itemRoute.js';
 import orderRouter from './routes/orderRoute.js';
 import reviewRoutes from "./routes/reviewRoutes.js";
-
+import adminRouter from "./routes/adminRoute.js"; 
 // NEW: Food review routes
 import foodReviewRoutes from "./routes/foodReviewRoutes.js";
 
@@ -49,6 +49,7 @@ connectDB();
 
 // Routes
 app.use('/api/user', userRouter)
+app.use('/api/admin', adminRouter)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/cart', cartRouter)
 app.use('/api/items', itemRouter);
