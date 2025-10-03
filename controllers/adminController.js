@@ -67,20 +67,19 @@ export const getUserDetails = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const user = await User.findById(id).select("username email role createdAt lastLogin");
+    const user = await User.findById(id).select("-password"); // hide password
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    const ordersCount = await Order.countDocuments({ userId: id });
-
-    const recentOrders = await Order.find({ userId: id })
+    const orderCount = await Order.countDocuments({ userId: id });
+    const orders = await Order.find({ userId: id })
+      .populate("restaurantId", "name")
       .sort({ createdAt: -1 })
-      .limit(5)
-      .select("status totalAmount createdAt");
+      .limit(5); // last 5 orders
 
     res.json({
       ...user.toObject(),
-      ordersCount,
-      recentOrders,
+      orderCount,
+      recentOrders: orders,
     });
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch user details", error: err.message });
