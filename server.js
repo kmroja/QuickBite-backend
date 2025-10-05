@@ -14,7 +14,7 @@ import reviewRoutes from "./routes/reviewRoutes.js";
 import adminRouter from "./routes/adminRoute.js"; 
 // NEW: Food review routes
 import foodReviewRoutes from "./routes/foodReviewRoutes.js";
-
+import restaurantRouter from "./routes/restaurantRoute.js";
 const app = express();
 const port = process.env.PORT || 4000;
 
@@ -55,7 +55,7 @@ app.use('/api/cart', cartRouter)
 app.use('/api/items', itemRouter);
 app.use('/api/orders', orderRouter);
 app.use("/api/reviews", reviewRoutes);
-
+app.use("/api/restaurants", restaurantRouter);
 // NEW: Mount food review routes (per-item)
 // app.use("/api/items", foodReviewRoutes);
 app.use("/api/food-review", foodReviewRoutes);

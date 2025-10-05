@@ -19,7 +19,8 @@ const itemSchema = new mongoose.Schema(
     hearts: { type: Number, default: 0 },
     totalReviews: { type: Number, default: 0 }, // count of reviews
     imageUrl: { type: String },
-    reviews: [reviewSchema], // ⬅ embedded reviews
+    reviews: [reviewSchema],
+    restaurant: { type: mongoose.Schema.Types.ObjectId, ref: "Restaurant", required: false }, 
   },
   { timestamps: true }
 );
