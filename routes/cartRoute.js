@@ -17,7 +17,7 @@ router.get('/', authMiddleware, (req, res, next) => {
 }, getCart);
 
 // POST /api/cart
-router.post('/', authMiddleware, (req, res, next) => {
+router.post('/', authMiddleware(), (req, res, next) => {
     console.log("➡️ POST /api/cart called by user:", req.user?._id, "body:", req.body);
     next();
 }, addToCart);
