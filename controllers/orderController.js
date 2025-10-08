@@ -1,5 +1,6 @@
 import Stripe from 'stripe';
 import Order from '../modals/order.js';
+import Restaurant from '../modals/restaurantModel.js';
 import 'dotenv/config';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -97,7 +98,6 @@ export const confirmPayment = async (req, res) => {
             const order = await Order.findOne({ sessionId: session_id });
             if (!order) return res.status(404).json({ message: 'Order not found' });
 
-            // Update only paymentStatus
             order.paymentStatus = 'succeeded';
             await order.save();
 
@@ -110,56 +110,39 @@ export const confirmPayment = async (req, res) => {
     }
 };
 
-// Get Orders for current user
+// Get Orders for current user (User or Restaurant)
 export const getOrders = async (req, res) => {
     try {
-        const rawOrders = await Order.find({ user: req.user._id }).sort({ createdAt: -1 }).lean();
+        let orders;
 
-        const formatted = rawOrders.map(o => ({
-            ...o,
-            items: o.items.map(i => ({
-                _id: i._id,
-                item: i.item,
-                quantity: i.quantity
-            })),
-            createdAt: o.createdAt,
-            paymentStatus: o.paymentStatus
-        }));
+        if (req.user.role === 'restaurant') {
+            // Fetch restaurant owned by user
+            const restaurant = await Restaurant.findOne({ owner: req.user._id });
+            if (!restaurant) return res.json([]);
 
-        res.json(formatted);
+            // Only orders that include items from this restaurant
+            orders = await Order.find({
+                "items.item._id": { $in: restaurant.menu }
+            }).sort({ createdAt: -1 }).lean();
+        } else if (req.user.role === 'user') {
+            orders = await Order.find({ user: req.user._id }).sort({ createdAt: -1 }).lean();
+        } else {
+            // Admin
+            orders = await Order.find().sort({ createdAt: -1 }).lean();
+        }
+
+        res.json(orders);
     } catch (error) {
         console.error('getOrders error:', error);
         res.status(500).json({ message: 'Server Error', error: error.message });
     }
 };
 
-// Get All Orders (Admin)
+// Get All Orders (Admin only)
 export const getAllOrders = async (req, res) => {
     try {
-        const raw = await Order.find({}).sort({ createdAt: -1 }).lean();
-
-        const formatted = raw.map(o => ({
-            _id: o._id,
-            user: o.user,
-            firstName: o.firstName,
-            lastName: o.lastName,
-            email: o.email,
-            phone: o.phone,
-            address: o.address ?? o.shippingAddress?.address ?? '',
-            city: o.city ?? o.shippingAddress?.city ?? '',
-            zipCode: o.zipCode ?? o.shippingAddress?.zipCode ?? '',
-            paymentMethod: o.paymentMethod,
-            paymentStatus: o.paymentStatus,
-            status: o.status,
-            createdAt: o.createdAt,
-            items: o.items.map(i => ({
-                _id: i._id,
-                item: i.item,
-                quantity: i.quantity
-            }))
-        }));
-
-        res.json(formatted);
+        const orders = await Order.find().sort({ createdAt: -1 }).lean();
+        res.json(orders);
     } catch (error) {
         console.error('getAllOrders error:', error);
         res.status(500).json({ message: 'Server Error', error: error.message });
@@ -174,22 +157,10 @@ export const updateAnyOrder = async (req, res) => {
 
         const { status, paymentStatus, expectedDelivery, deliveredAt } = req.body;
 
-        if (status !== undefined) {
-            if (!['processing','outForDelivery','delivered'].includes(status)) {
-                return res.status(400).json({ message: `Invalid status value: ${status}` });
-            }
-            order.status = status;
-        }
-
-        if (paymentStatus !== undefined) {
-            if (!['pending','succeeded','failed'].includes(paymentStatus)) {
-                return res.status(400).json({ message: `Invalid paymentStatus value: ${paymentStatus}` });
-            }
-            order.paymentStatus = paymentStatus;
-        }
-
-        if (expectedDelivery !== undefined) order.expectedDelivery = expectedDelivery;
-        if (deliveredAt !== undefined) order.deliveredAt = deliveredAt;
+        if (status) order.status = status;
+        if (paymentStatus) order.paymentStatus = paymentStatus;
+        if (expectedDelivery) order.expectedDelivery = expectedDelivery;
+        if (deliveredAt) order.deliveredAt = deliveredAt;
 
         await order.save();
         res.json(order);
@@ -205,9 +176,18 @@ export const getOrderById = async (req, res) => {
         const order = await Order.findById(req.params.id);
         if (!order) return res.status(404).json({ message: 'Order not found' });
 
-        if (!order.user.equals(req.user._id)) return res.status(403).json({ message: 'Access denied' });
+        if (req.user.role === 'user' && !order.user.equals(req.user._id)) {
+            return res.status(403).json({ message: 'Access denied' });
+        }
 
-        if (req.query.email && order.email !== req.query.email) return res.status(403).json({ message: 'Access denied' });
+        if (req.user.role === 'restaurant') {
+            const restaurant = await Restaurant.findOne({ owner: req.user._id });
+            const restaurantItemIds = restaurant?.menu.map(id => id.toString()) || [];
+            const orderItemIds = order.items.map(i => i.item._id.toString());
+            if (!orderItemIds.some(id => restaurantItemIds.includes(id))) {
+                return res.status(403).json({ message: 'Access denied' });
+            }
+        }
 
         res.json(order);
     } catch (error) {
@@ -224,11 +204,7 @@ export const updateOrder = async (req, res) => {
 
         if (!order.user.equals(req.user._id)) return res.status(403).json({ message: 'Access denied' });
 
-        if (req.body.email && order.email !== req.body.email) return res.status(403).json({ message: 'Access denied' });
-
         const { status, paymentStatus, expectedDelivery, deliveredAt, ...allowedFields } = req.body;
-
-        // Only allow user to update fields other than status/paymentStatus
         Object.assign(order, allowedFields);
 
         await order.save();

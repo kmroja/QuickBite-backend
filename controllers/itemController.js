@@ -1,95 +1,90 @@
+// controllers/itemController.js
 import Item from "../modals/item.js";
-import Restaurant from "../modals/restaurantModel.js"; // <-- import restaurant model
+import Restaurant from "../modals/restaurantModel.js";
 
-// ---------------- CREATE ITEM ----------------
-export const createItem = async (req, res, next) => {
+// CREATE ITEM
+export const createItem = async (req, res) => {
   try {
-    const {
-      name,
-      description,
-      category,
-      price,
-      rating,
-      hearts,
-      restaurant, // <-- new optional field
-    } = req.body;
+    const { name, description, price, restaurantId } = req.body;
 
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : "";
+    // Validation
+    if (!name || !price || !restaurantId) {
+      return res.status(400).json({ message: "Name, price, and restaurantId are required" });
+    }
 
-    const total = Number(price) * 1;
+    // Restaurant role check
+    if (req.user.role === "restaurant") {
+      const restaurant = await Restaurant.findById(restaurantId);
+      if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+
+      if (!restaurant.owner || String(restaurant.owner) !== String(req.user._id)) {
+        return res.status(403).json({ message: "Access denied: cannot add items to this restaurant" });
+      }
+    }
 
     const newItem = new Item({
       name,
       description,
-      category,
       price,
-      rating,
-      hearts,
-      imageUrl,
-      total,
-      restaurant: restaurant || null, // optional link to restaurant
+      restaurant: restaurantId,
+      imageUrl: req.file ? `/uploads/${req.file.filename}` : "",
     });
 
-    const saved = await newItem.save();
+    await newItem.save();
 
-    // 🔗 If restaurant ID provided, add this item to that restaurant's menu array
-    if (restaurant) {
-      try {
-        await Restaurant.findByIdAndUpdate(restaurant, {
-          $addToSet: { menu: saved._id },
-        });
-      } catch (err) {
-        console.warn("⚠️ Failed to add item to restaurant.menu:", err.message);
-      }
-    }
+    // Add to restaurant menu
+    await Restaurant.findByIdAndUpdate(restaurantId, { $push: { menu: newItem._id } });
 
-    res.status(201).json(saved);
+    res.status(201).json(newItem);
   } catch (err) {
-    if (err.code === 11000) {
-      res.status(400).json({ message: "Item name already exists" });
-    } else next(err);
+    console.error("Create item error:", err);
+    res.status(500).json({ message: "Failed to create item", error: err.message });
   }
 };
 
-// ---------------- GET ITEMS ----------------
-export const getItems = async (req, res, next) => {
+// GET ITEMS
+export const getItems = async (req, res) => {
   try {
-    const filter = {};
-    if (req.query.restaurantId) filter.restaurant = req.query.restaurantId;
+    let items;
 
-    const items = await Item.find(filter).sort({ createdAt: -1 });
-    const host = `${req.protocol}://${req.get("host")}`;
+    if (req.user.role === "restaurant") {
+      const restaurant = await Restaurant.findOne({ owner: req.user._id });
+      if (!restaurant) return res.json([]);
+      items = await Item.find({ restaurant: restaurant._id }).sort({ createdAt: -1 });
+    } else {
+      // admin or any other role
+      items = await Item.find().sort({ createdAt: -1 });
+    }
 
-    const withFullUrl = items.map((i) => ({
-      ...i.toObject(),
-      imageUrl: i.imageUrl ? host + i.imageUrl : "",
-    }));
-
-    res.json(withFullUrl);
+    res.json(items);
   } catch (err) {
-    next(err);
+    console.error("Get items error:", err);
+    res.status(500).json({ message: "Failed to fetch items" });
   }
 };
 
-// ---------------- DELETE ITEM ----------------
-export const deleteItem = async (req, res, next) => {
+// DELETE ITEM
+export const deleteItem = async (req, res) => {
   try {
-    const removed = await Item.findByIdAndDelete(req.params.id);
-    if (!removed) return res.status(404).json({ message: "Item not found" });
+    const item = await Item.findById(req.params.id);
+    if (!item) return res.status(404).json({ message: "Item not found" });
 
-    // If deleted item belongs to a restaurant, remove it from that menu
-    if (removed.restaurant) {
-      try {
-        await Restaurant.findByIdAndUpdate(removed.restaurant, {
-          $pull: { menu: removed._id },
-        });
-      } catch (err) {
-        console.warn("⚠️ Failed to remove item from restaurant.menu:", err.message);
+    // Restaurant role check
+    if (req.user.role === "restaurant") {
+      const restaurant = await Restaurant.findOne({ owner: req.user._id });
+      if (!restaurant || String(item.restaurant) !== String(restaurant._id)) {
+        return res.status(403).json({ message: "Access denied: cannot delete this item" });
       }
     }
 
-    res.status(204).end();
+    await Item.findByIdAndDelete(req.params.id);
+
+    // Remove from restaurant menu
+    await Restaurant.findByIdAndUpdate(item.restaurant, { $pull: { menu: item._id } });
+
+    res.json({ message: "Item deleted successfully" });
   } catch (err) {
-    next(err);
+    console.error("Delete item error:", err);
+    res.status(500).json({ message: "Failed to delete item" });
   }
 };

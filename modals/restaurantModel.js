@@ -12,6 +12,8 @@ const restaurantSchema = new mongoose.Schema(
     totalReviews: { type: Number, default: 0 },
     openingHours: { type: String },
     menu: [{ type: mongoose.Schema.Types.ObjectId, ref: "Item" }],
+    // NEW: owner field linking to a User who has role 'restaurant' (optional)
+    owner: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true },
   },
   { timestamps: true }
 );
