@@ -3,50 +3,70 @@
 import jwt from "jsonwebtoken";
 import User from "../modals/userModel.js";
 
+/**
+ * Generic Auth Middleware
+ * Can optionally restrict by role(s)
+ */
 const authMiddleware = (roles = null) => {
   return async (req, res, next) => {
     try {
       const authHeader = req.headers.authorization;
-      if (!authHeader) return res.status(401).json({ message: "No token provided" });
+      if (!authHeader)
+        return res.status(401).json({ message: "No token provided" });
 
       const token = authHeader.split(" ")[1];
-      if (!token) return res.status(401).json({ message: "No token provided" });
+      if (!token)
+        return res.status(401).json({ message: "No token provided" });
 
-      // Accept tokens that include either { id: ... } or { _id: ... }
       let decoded;
       try {
         decoded = jwt.verify(token, process.env.JWT_SECRET);
       } catch (err) {
-        return res.status(401).json({ message: "Invalid token", error: err.message });
+        return res
+          .status(401)
+          .json({ message: "Invalid token", error: err.message });
       }
 
       const userId = decoded.id || decoded._id || decoded.userId;
-      if (!userId) return res.status(401).json({ message: "Invalid token payload" });
+      if (!userId)
+        return res.status(401).json({ message: "Invalid token payload" });
 
       const user = await User.findById(userId).select("-password");
       if (!user) return res.status(401).json({ message: "Invalid token user" });
 
-      req.user = user; // attach user
+      req.user = user;
 
-      // Role-based access: roles can be string or array
+      // Role-based protection (if roles are defined)
       if (roles) {
         const allowedRoles = Array.isArray(roles) ? roles : [roles];
-        // Normalize casing (DB uses lowercase roles in this project)
         const normalized = allowedRoles.map((r) => String(r).toLowerCase());
+
         if (!normalized.includes(String(user.role).toLowerCase())) {
-          return res.status(403).json({ message: "Access denied: insufficient role" });
+          return res
+            .status(403)
+            .json({ message: "Access denied: insufficient role" });
         }
       }
 
       next();
     } catch (err) {
       console.error("AuthMiddleware error:", err);
-      res.status(401).json({ message: "Authentication failed", error: err.message });
+      res
+        .status(401)
+        .json({ message: "Authentication failed", error: err.message });
     }
   };
 };
 
+/**
+ * Admin-only middleware shortcut
+ * Use in routes for admin access only
+ */
+const adminMiddleware = authMiddleware("admin");
+
+export { authMiddleware, adminMiddleware };
 export default authMiddleware;
+
 
 
 // import jwt from "jsonwebtoken";

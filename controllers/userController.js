@@ -13,62 +13,52 @@ const createToken = (user) => {
 };
 
 // 🧑‍💻 REGISTER USER
+
 const registerUser = async (req, res) => {
   const { username, password, email, role } = req.body;
 
   try {
-    // Email exists?
     const exists = await userModel.findOne({ email });
     if (exists) return res.json({ success: false, message: "User Already Exists" });
 
-    // Validate email
     if (!validator.isEmail(email)) {
       return res.json({ success: false, message: "Please Enter A Valid Email" });
     }
 
-    // Validate password
     if (password.length < 8) {
       return res.json({ success: false, message: "Please Enter A Strong Password" });
     }
 
-    // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Role handling: only admin can assign 'admin' or 'restaurant'
+    // ✅ Allow restaurant self-register but restrict admin
     let userRole = "user";
-    if (role && ["admin", "restaurant"].includes(role)) {
+    if (role === "restaurant") {
+      userRole = "restaurant";
+    } else if (role === "admin") {
+      // only existing admin can create admins
       if (req.user?.role !== "admin") {
-        return res.status(403).json({ success: false, message: "Only admin can assign this role" });
+        return res.status(403).json({ success: false, message: "Only admin can assign admin role" });
       }
-      userRole = role;
+      userRole = "admin";
     }
 
-    const newUser = new userModel({
-      username,
-      email,
-      password: hashedPassword,
-      role: userRole,
-    });
-
+    const newUser = new userModel({ username, email, password: hashedPassword, role: userRole });
     const user = await newUser.save();
     const token = createToken(user);
 
     res.status(201).json({
       success: true,
       token,
-      user: {
-        _id: user._id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-      },
+      user: { _id: user._id, username: user.username, email: user.email, role: user.role },
     });
   } catch (error) {
     console.log(error);
     res.status(500).json({ success: false, message: "Server Error" });
   }
 };
+
 
 // 🔐 LOGIN USER
 const loginUser = async (req, res) => {
@@ -118,6 +108,17 @@ const getAllUsers = async (req, res) => {
     res.json({ success: true, users });
   } catch (err) {
     console.log(err);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+// 🔒 VERIFY TOKEN
+const verifyToken = async (req, res) => {
+  try {
+    const user = await userModel.findById(req.user._id).select("-password");
+    if (!user) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    res.json({ success: true, user });
+  } catch (err) {
     res.status(500).json({ success: false, message: "Server Error" });
   }
 };

@@ -1,91 +1,114 @@
-// controllers/restaurantController.js
 import Restaurant from "../modals/restaurantModel.js";
-import Item from "../modals/item.js";
+import path from "path";
+import fs from "fs";
 
-/**
- * ✅ Create new restaurant
- * This version ensures the image is stored as a full public URL (works locally and on Render)
- */
+// ✅ Helper: Build full image URL
+const getFullImageUrl = (req, filename) => {
+  const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get("host")}`;
+  return `${baseUrl}/uploads/${filename}`;
+};
+
+// ✅ Create new restaurant
 export const createRestaurant = async (req, res) => {
   try {
-    const { name, location, cuisineType, description, openingHours } = req.body;
+    const { name, description, address, phone, cuisine, rating, reviews } = req.body;
 
-    // Build correct image URL
-    let imageUrl = "";
-    if (req.file) {
-      // dynamically build base URL (localhost or render)
-      const baseUrl = `${req.protocol}://${req.get("host")}`;
-      imageUrl = `${baseUrl}/uploads/${req.file.filename}`;
-    } else if (req.body.imageUrl) {
-      imageUrl = req.body.imageUrl; // for manual URL uploads
-    }
+    if (!name || !address)
+      return res.status(400).json({ success: false, message: "Name and address are required" });
 
-    const rest = new Restaurant({
+    const image = req.file ? getFullImageUrl(req, req.file.filename) : null;
+
+    const restaurantData = {
       name,
-      location,
-      cuisineType,
       description,
-      openingHours,
-      imageUrl,
-    });
+      address,
+      phone,
+      cuisine,
+      rating,
+      reviews,
+      image,
+      owner: req.user?._id || null,
+    };
 
-    await rest.save();
-    res.status(201).json(rest);
+    const restaurant = await Restaurant.create(restaurantData);
+    res.status(201).json({ success: true, restaurant });
   } catch (err) {
-    console.error("createRestaurant error:", err);
-    res.status(500).json({
-      message: "Failed to create restaurant",
-      error: err.message,
-    });
+    console.error("Error creating restaurant:", err);
+    res.status(500).json({ success: false, message: "Server error while creating restaurant" });
   }
 };
 
-/**
- * ✅ Get all restaurants (with populated menu)
- */
+// ✅ Get all restaurants (Public)
 export const getAllRestaurants = async (req, res) => {
   try {
-    const restaurants = await Restaurant.find()
-      .populate("menu")
-      .sort({ createdAt: -1 });
-
-    res.json(restaurants);
+    const restaurants = await Restaurant.find().populate("owner", "username email role");
+    res.json({ success: true, restaurants });
   } catch (err) {
-    console.error("getAllRestaurants error:", err);
-    res.status(500).json({ message: "Failed to fetch restaurants" });
+    console.error("Error fetching restaurants:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch restaurants" });
   }
 };
 
-/**
- * ✅ Get a single restaurant by ID (with menu)
- */
+// ✅ Get single restaurant by ID
 export const getRestaurantById = async (req, res) => {
   try {
-    const rest = await Restaurant.findById(req.params.id).populate({
-      path: "menu",
-      options: { sort: { createdAt: -1 } },
-    });
+    const restaurant = await Restaurant.findById(req.params.id).populate("owner", "username email");
+    if (!restaurant)
+      return res.status(404).json({ success: false, message: "Restaurant not found" });
 
-    if (!rest) {
-      return res.status(404).json({ message: "Restaurant not found" });
-    }
-
-    res.json(rest);
+    res.json({ success: true, restaurant });
   } catch (err) {
-    console.error("getRestaurantById error:", err);
-    res.status(500).json({ message: "Failed to fetch restaurant" });
+    console.error("Error fetching restaurant:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch restaurant" });
   }
 };
 
-/**
- * ✅ Helper: add menu item to restaurant’s menu
- */
-export const addMenuItemToRestaurant = async (restaurantId, itemId) => {
+// ✅ Update restaurant (Admin or Restaurant Owner)
+export const updateRestaurant = async (req, res) => {
   try {
-    await Restaurant.findByIdAndUpdate(restaurantId, {
-      $addToSet: { menu: itemId },
-    });
+    const restaurant = await Restaurant.findById(req.params.id);
+    if (!restaurant)
+      return res.status(404).json({ success: false, message: "Restaurant not found" });
+
+    // Role-based protection
+    if (req.user.role !== "admin" && restaurant.owner.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: "Access denied" });
+    }
+
+    const updates = { ...req.body };
+
+    if (req.file) {
+      if (restaurant.image) {
+        const oldPath = path.join("uploads", path.basename(restaurant.image));
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
+      updates.image = getFullImageUrl(req, req.file.filename);
+    }
+
+    const updated = await Restaurant.findByIdAndUpdate(req.params.id, updates, { new: true });
+    res.json({ success: true, restaurant: updated });
   } catch (err) {
-    console.error("addMenuItemToRestaurant error:", err);
+    console.error("Error updating restaurant:", err);
+    res.status(500).json({ success: false, message: "Failed to update restaurant" });
+  }
+};
+
+// ✅ Delete restaurant (Admin only)
+export const deleteRestaurant = async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findById(req.params.id);
+    if (!restaurant)
+      return res.status(404).json({ success: false, message: "Restaurant not found" });
+
+    if (restaurant.image) {
+      const imagePath = path.join("uploads", path.basename(restaurant.image));
+      if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+    }
+
+    await Restaurant.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: "Restaurant deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting restaurant:", err);
+    res.status(500).json({ success: false, message: "Failed to delete restaurant" });
   }
 };

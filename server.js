@@ -5,29 +5,33 @@ import { connectDB } from "./config/db.js";
 import path from "path";
 import { fileURLToPath } from "url";
 
+// 🧩 Import Routes
 import userRouter from "./routes/userRoute.js";
+import adminRouter from "./routes/adminRoute.js";
 import cartRouter from "./routes/cartRoute.js";
 import itemRouter from "./routes/itemRoute.js";
 import orderRouter from "./routes/orderRoute.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
-import adminRouter from "./routes/adminRoute.js";
 import foodReviewRoutes from "./routes/foodReviewRoutes.js";
 import restaurantRouter from "./routes/restaurantRoute.js";
-
+import restaurantApplicationRouter from "./routes/restaurantApplicationRoute.js";
 const app = express();
 const port = process.env.PORT || 4000;
 
+// ✅ Resolve directory for static path
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ✅ Allowed origins
+// ✅ Connect MongoDB
+connectDB();
+
+// ✅ CORS Configuration
 const allowedOrigins = [
   "https://quickbite-frontendapp.netlify.app",
   "https://quickbite-adminapp.netlify.app",
   "http://localhost:5173",
 ];
 
-// ✅ Global CORS middleware — no app.options() needed!
 app.use(
   cors({
     origin: function (origin, callback) {
@@ -39,35 +43,40 @@ app.use(
       }
     },
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "X-Requested-With",
-      "Accept",
-    ],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
     credentials: true,
   })
 );
 
-// ✅ Body parsing
+// ✅ Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ✅ Connect DB
-connectDB();
-
-// ✅ Routes
+// ✅ Serve Uploaded Files Publicly (for restaurant images)
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// ✅ API Routes
 app.use("/api/user", userRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/cart", cartRouter);
 app.use("/api/items", itemRouter);
 app.use("/api/orders", orderRouter);
 app.use("/api/reviews", reviewRoutes);
-app.use("/api/restaurants", restaurantRouter);
 app.use("/api/food-review", foodReviewRoutes);
+app.use("/api/restaurants", restaurantRouter);
+app.use("/api/restaurant-applications", restaurantApplicationRouter);
+// ✅ Health Check Route
+app.get("/", (req, res) => {
+  res.send("✅ QuickBite API is running successfully.");
+});
 
-app.get("/", (req, res) => res.send("✅ QuickBite API is working"));
+// ✅ Error Handling (optional but recommended)
+app.use((err, req, res, next) => {
+  console.error("🔥 Global Error:", err.message);
+  res.status(500).json({ success: false, message: "Internal Server Error" });
+});
 
-// ✅ Start server
-app.listen(port, () => console.log(`🚀 Server running on port ${port}`));
+// ✅ Start Server
+app.listen(port, () => {
+  console.log(`🚀 Server running at http://localhost:${port}`);
+});
