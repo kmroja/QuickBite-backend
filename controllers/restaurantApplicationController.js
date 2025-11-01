@@ -2,7 +2,9 @@
 import RestaurantApplication from "../modals/restaurantApplicationModel.js";
 import bcrypt from "bcryptjs";
 
-// ✅ Apply as Restaurant (Public)
+/* -------------------------------------------------------------------------- */
+/* ✅ 1. Apply as Restaurant (Public)                                         */
+/* -------------------------------------------------------------------------- */
 export const applyForRestaurant = async (req, res) => {
   try {
     console.log("📥 Incoming Restaurant Application:", req.body);
@@ -19,7 +21,15 @@ export const applyForRestaurant = async (req, res) => {
     } = req.body;
 
     // ✅ Validate required fields
-    if (!restaurantName || !ownerName || !email || !phone || !address || !cuisine || !password) {
+    if (
+      !restaurantName ||
+      !ownerName ||
+      !email ||
+      !phone ||
+      !address ||
+      !cuisine ||
+      !password
+    ) {
       return res.status(400).json({
         success: false,
         message: "All required fields must be provided.",
@@ -55,7 +65,6 @@ export const applyForRestaurant = async (req, res) => {
     });
 
     await newApp.save();
-
     console.log("✅ Application saved:", newApp._id);
 
     res.status(201).json({
@@ -65,46 +74,102 @@ export const applyForRestaurant = async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Apply Error:", err);
-    res.status(500).json({ success: false, message: "Server Error", error: err.message });
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: err.message,
+    });
   }
 };
 
-// ✅ Get all applications (Admin only)
+/* -------------------------------------------------------------------------- */
+/* ✅ 2. Get All Applications (Admin only)                                    */
+/* -------------------------------------------------------------------------- */
 export const getAllApplications = async (req, res) => {
   try {
-    const applications = await RestaurantApplication.find().sort({ createdAt: -1 });
+    const applications = await RestaurantApplication.find().sort({
+      createdAt: -1,
+    });
     res.status(200).json({ success: true, applications });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to fetch applications." });
+    console.error("❌ Fetch All Applications Error:", err);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch applications." });
   }
 };
 
-// ✅ Approve Application
+/* -------------------------------------------------------------------------- */
+/* ✅ 3. Get Pending Applications (Admin only)                                */
+/* -------------------------------------------------------------------------- */
+export const getPendingApplications = async (req, res) => {
+  try {
+    const pending = await RestaurantApplication.find({ status: "pending" });
+    res.status(200).json({
+      success: true,
+      message: "Fetched all pending applications.",
+      data: pending,
+    });
+  } catch (error) {
+    console.error("❌ Fetch Pending Error:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+/* -------------------------------------------------------------------------- */
+/* ✅ 4. Approve Application (Admin only)                                     */
+/* -------------------------------------------------------------------------- */
 export const approveApplication = async (req, res) => {
   try {
     const { id } = req.params;
-    const app = await RestaurantApplication.findByIdAndUpdate(
+    const updated = await RestaurantApplication.findByIdAndUpdate(
       id,
       { status: "approved" },
       { new: true }
     );
-    res.status(200).json({ success: true, message: "Application approved", app });
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to approve." });
+
+    if (!updated) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Application not found." });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Application approved successfully.",
+      data: updated,
+    });
+  } catch (error) {
+    console.error("❌ Approve Error:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
   }
 };
 
-// ✅ Reject Application
+/* -------------------------------------------------------------------------- */
+/* ✅ 5. Reject Application (Admin only)                                      */
+/* -------------------------------------------------------------------------- */
 export const rejectApplication = async (req, res) => {
   try {
     const { id } = req.params;
-    const app = await RestaurantApplication.findByIdAndUpdate(
+    const updated = await RestaurantApplication.findByIdAndUpdate(
       id,
       { status: "rejected" },
       { new: true }
     );
-    res.status(200).json({ success: true, message: "Application rejected", app });
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to reject." });
+
+    if (!updated) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Application not found." });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Application rejected successfully.",
+      data: updated,
+    });
+  } catch (error) {
+    console.error("❌ Reject Error:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
   }
 };
