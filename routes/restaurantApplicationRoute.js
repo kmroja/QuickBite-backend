@@ -12,7 +12,7 @@ import {
   rejectApplication,
 } from "../controllers/restaurantApplicationController.js";
 
-import { authMiddleware, adminMiddleware } from "../middleware/auth.js";
+import { adminMiddleware } from "../middleware/auth.js"; // ✅ Only need adminMiddleware here
 
 const router = express.Router();
 
@@ -34,27 +34,29 @@ const storage = multer.diskStorage({
     cb(null, unique + path.extname(file.originalname));
   },
 });
+
 const upload = multer({ storage });
 
 /* -------------------------------------------------------------------------- */
 /* 🌍 Public Route: Restaurant Application Submission                         */
 /* -------------------------------------------------------------------------- */
+// Anyone can apply — no auth required
 router.post("/apply", upload.single("image"), applyForRestaurant);
 
 /* -------------------------------------------------------------------------- */
-/* 🧑‍💼 Admin Routes (Protected)                                             */
+/* 🧑‍💼 Admin Routes (Protected by JWT + Role Check)                          */
 /* -------------------------------------------------------------------------- */
 
 // ✅ Get all applications (approved + rejected + pending)
-router.get("/", authMiddleware, adminMiddleware, getAllApplications);
+router.get("/", adminMiddleware, getAllApplications);
 
 // ✅ Get only pending applications
-router.get("/pending", authMiddleware, adminMiddleware, getPendingApplications);
+router.get("/pending", adminMiddleware, getPendingApplications);
 
 // ✅ Approve an application
-router.put("/:id/approve", authMiddleware, adminMiddleware, approveApplication);
+router.put("/:id/approve", adminMiddleware, approveApplication);
 
 // ✅ Reject an application
-router.put("/:id/reject", authMiddleware, adminMiddleware, rejectApplication);
+router.put("/:id/reject", adminMiddleware, rejectApplication);
 
 export default router;
