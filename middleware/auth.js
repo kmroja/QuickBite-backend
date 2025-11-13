@@ -1,71 +1,69 @@
 // server/middleware/authMiddleware.js
 // middleware/auth.js
+// middleware/auth.js
 import jwt from "jsonwebtoken";
 import User from "../modals/userModel.js";
 
 /**
- * Generic Auth Middleware
- * Can optionally restrict by role(s)
+ * ✅ Generic Authentication Middleware
+ * Optionally restricts access by user role(s)
  */
 const authMiddleware = (roles = null) => {
   return async (req, res, next) => {
     try {
       const authHeader = req.headers.authorization;
       if (!authHeader)
-        return res.status(401).json({ message: "No token provided" });
+        return res.status(401).json({ success: false, message: "No token provided" });
 
       const token = authHeader.split(" ")[1];
       if (!token)
-        return res.status(401).json({ message: "No token provided" });
+        return res.status(401).json({ success: false, message: "Invalid token format" });
 
-      let decoded;
-      try {
-        decoded = jwt.verify(token, process.env.JWT_SECRET);
-      } catch (err) {
-        return res
-          .status(401)
-          .json({ message: "Invalid token", error: err.message });
-      }
+      // 🔐 Verify JWT
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const userId = decoded._id || decoded.id || decoded.userId;
 
-      const userId = decoded.id || decoded._id || decoded.userId;
       if (!userId)
-        return res.status(401).json({ message: "Invalid token payload" });
+        return res.status(401).json({ success: false, message: "Invalid token payload" });
 
       const user = await User.findById(userId).select("-password");
-      if (!user) return res.status(401).json({ message: "Invalid token user" });
+      if (!user)
+        return res.status(401).json({ success: false, message: "User not found for token" });
 
       req.user = user;
 
-      // Role-based protection (if roles are defined)
+      // 🔒 Role-based restriction (if specified)
       if (roles) {
         const allowedRoles = Array.isArray(roles) ? roles : [roles];
-        const normalized = allowedRoles.map((r) => String(r).toLowerCase());
+        const normalizedRoles = allowedRoles.map((r) => r.toLowerCase());
 
-        if (!normalized.includes(String(user.role).toLowerCase())) {
+        if (!normalizedRoles.includes(user.role.toLowerCase())) {
           return res
             .status(403)
-            .json({ message: "Access denied: insufficient role" });
+            .json({ success: false, message: "Access denied: insufficient permissions" });
         }
       }
 
       next();
     } catch (err) {
-      console.error("AuthMiddleware error:", err);
-      res
-        .status(401)
-        .json({ message: "Authentication failed", error: err.message });
+      console.error("AuthMiddleware error:", err.message);
+      return res.status(401).json({
+        success: false,
+        message: "Authentication failed",
+        error: err.message,
+      });
     }
   };
 };
 
 /**
- * Admin-only middleware shortcut
- * Use in routes for admin access only
+ * ✅ Shortcut for Admin-only Routes
  */
 const adminMiddleware = authMiddleware("admin");
 
 export { authMiddleware, adminMiddleware };
 export default authMiddleware;
+
 
 
 
