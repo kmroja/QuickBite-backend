@@ -3,7 +3,6 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import validator from "validator";
 
-// 🔑 CREATE TOKEN (store _id, role, email)
 const createToken = (user) => {
   return jwt.sign(
     { _id: user._id, role: user.role, email: user.email },
@@ -12,33 +11,33 @@ const createToken = (user) => {
   );
 };
 
-// 🧑‍💻 REGISTER USER
+// REGISTER
 const registerUser = async (req, res) => {
-  const { username, password, email, role } = req.body;
+  const { username, password, email, role, adminKey } = req.body;
 
   try {
     const exists = await userModel.findOne({ email });
-    if (exists)
-      return res.json({ success: false, message: "User already exists" });
+    if (exists) return res.json({ success: false, message: "User already exists" });
 
     if (!validator.isEmail(email))
-      return res.json({ success: false, message: "Enter a valid email" });
+      return res.json({ success: false, message: "Invalid email" });
 
     if (password.length < 8)
       return res.json({ success: false, message: "Password too short" });
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // ✅ Role handling
-    let userRole = "user"; // default
+    let userRole = "user";
+
     if (role === "restaurant") userRole = "restaurant";
+
     if (role === "admin") {
-      // only existing admins can create another admin
-      if (req.user?.role !== "admin") {
-        return res
-          .status(403)
-          .json({ success: false, message: "Only admins can create admin users" });
+      // Option 1: Admin Key
+      if (adminKey !== process.env.ADMIN_SECRET) {
+        return res.status(403).json({
+          success: false,
+          message: "Invalid Admin Secret Key",
+        });
       }
       userRole = "admin";
     }
@@ -50,57 +49,36 @@ const registerUser = async (req, res) => {
       role: userRole,
     });
 
-    const savedUser = await newUser.save();
-    const token = createToken(savedUser);
+    const user = await newUser.save();
+    const token = createToken(user);
 
-    res.status(201).json({
-      success: true,
-      message: "Registration successful",
-      token,
-      user: {
-        _id: savedUser._id,
-        username: savedUser.username,
-        email: savedUser.email,
-        role: savedUser.role,
-      },
-    });
-  } catch (error) {
-    console.error("Register Error:", error.message);
+    res.status(201).json({ success: true, token, user });
+  } catch (err) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// 🔐 LOGIN USER
+// LOGIN
 const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
   try {
     const user = await userModel.findOne({ email });
-    if (!user)
-      return res.json({ success: false, message: "User doesn't exist" });
+    if (!user) return res.json({ success: false, message: "User not found" });
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch)
-      return res.json({ success: false, message: "Invalid credentials" });
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.json({ success: false, message: "Invalid credentials" });
 
     const token = createToken(user);
 
-    res.json({
-      success: true,
-      message: "Login successful",
-      token,
-      user: {
-        _id: user._id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-      },
-    });
-  } catch (error) {
-    console.error("Login Error:", error.message);
+    res.json({ success: true, token, user });
+  } catch (err) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+
+
 
 // 👤 GET PROFILE (logged-in user)
 const getProfile = async (req, res) => {
