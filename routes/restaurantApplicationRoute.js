@@ -54,9 +54,9 @@ router.get("/", adminMiddleware, getAllApplications);
 router.get("/pending", adminMiddleware, getPendingApplications);
 
 // ✅ Approve an application
-router.put("/:id/approve", adminMiddleware, approveApplication);
+router.patch("/:id/approve", adminMiddleware, approveApplication);
 
 // ✅ Reject an application
-router.put("/:id/reject", adminMiddleware, rejectApplication);
+router.patch("/:id/reject", adminMiddleware, rejectApplication);
 
 export default router;
