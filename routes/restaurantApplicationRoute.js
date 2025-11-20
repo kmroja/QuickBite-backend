@@ -28,7 +28,7 @@ router.post("/apply", upload.single("image"), applyForRestaurant);
 // Admin protected
 router.get("/", adminMiddleware, getAllApplications);
 router.get("/pending", adminMiddleware, getPendingApplications);
-router.put("/:id/approve", adminMiddleware, approveApplication);
-router.put("/:id/reject", adminMiddleware, rejectApplication);
+router.patch("/:id/approve", adminMiddleware, approveApplication);
+router.patch("/:id/reject", adminMiddleware, rejectApplication);
 
 export default router;
