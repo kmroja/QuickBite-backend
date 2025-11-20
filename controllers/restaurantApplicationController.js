@@ -82,69 +82,87 @@ export const getPendingApplications = async (req, res) => {
 export const approveApplication = async (req, res) => {
   try {
     const { id } = req.params;
+
     const app = await RestaurantApplication.findById(id);
-    if (!app) return res.status(404).json({ success: false, message: "Application not found." });
+    if (!app)
+      return res.status(404).json({ success: false, message: "Application not found." });
 
-    if (app.status === "approved") return res.status(400).json({ success: false, message: "Already approved." });
+    if (app.status === "approved")
+      return res.status(400).json({ success: false, message: "Already approved." });
 
-    // 1) Create Restaurant if not exists (based on email or name)
-    const existingRestaurant = await Restaurant.findOne({ $or: [{ email: app.email }, { name: app.restaurantName }] });
+    // Check if restaurant already exists
+    const existingRestaurant = await Restaurant.findOne({
+      $or: [{ name: app.restaurantName }, { ownerEmail: app.email }],
+    });
+
     let restaurant;
     if (!existingRestaurant) {
+      // Create restaurant based on model requirements
       restaurant = await Restaurant.create({
         name: app.restaurantName,
+        location: app.address,         // ✔ mapped correctly
+        cuisineType: app.cuisine,      // ✔ mapped correctly
         description: app.description || "",
-        address: app.address,
-        phone: app.phone,
-        cuisine: app.cuisine,
+        imageUrl: app.image || "",
         rating: 0,
-        image: app.image || "",
-        owner: null, // we'll link to user below (if created)
-        approvedAt: new Date(),
+        totalReviews: 0,
+        openingHours: "9:00 AM - 9:00 PM",
+        owner: null,                   // linked later
       });
     } else {
       restaurant = existingRestaurant;
     }
 
-    // 2) Create / Ensure restaurant user (role = 'restaurant')
-    const existingUser = await userModel.findOne({ email: app.email });
-    let restaurantUser = existingUser;
-    if (!existingUser) {
+    // Check/create restaurant user
+    let restaurantUser = await userModel.findOne({ email: app.email });
+
+    if (!restaurantUser) {
       restaurantUser = await userModel.create({
         username: app.ownerName,
         email: app.email,
-        password: app.password, // already hashed in application
+        password: app.password, // already hashed
         role: "restaurant",
       });
-    } else if (existingUser.role !== "restaurant") {
-      // update existing user role to restaurant (optional — admin decision)
-      existingUser.role = "restaurant";
-      await existingUser.save();
-      restaurantUser = existingUser;
+    } else {
+      // Update existing user to restaurant role if needed
+      if (restaurantUser.role !== "restaurant") {
+        restaurantUser.role = "restaurant";
+        await restaurantUser.save();
+      }
     }
 
-    // Link restaurant.owner to restaurantUser if not set
-    if (restaurant && restaurantUser && (!restaurant.owner || String(restaurant.owner) !== String(restaurantUser._id))) {
+    // Link restaurant owner
+    if (!restaurant.owner || String(restaurant.owner) !== String(restaurantUser._id)) {
       restaurant.owner = restaurantUser._id;
       await restaurant.save();
     }
 
-    // 3) Update application status
+    // Update application status
     app.status = "approved";
     await app.save();
 
     return res.status(200).json({
       success: true,
-      message: "Application approved and restaurant created.",
+      message: "Application approved. Restaurant created successfully.",
       application: app,
       restaurant,
-      restaurantUser: { _id: restaurantUser._id, email: restaurantUser.email, role: restaurantUser.role },
+      restaurantUser: {
+        _id: restaurantUser._id,
+        email: restaurantUser.email,
+        role: restaurantUser.role,
+      },
     });
+
   } catch (err) {
     console.error("❌ Approve Error:", err);
-    return res.status(500).json({ success: false, message: "Server Error", error: err.message });
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: err.message,
+    });
   }
 };
+
 
 /**
  * Reject
