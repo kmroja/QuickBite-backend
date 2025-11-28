@@ -50,9 +50,13 @@ export const getAllRestaurants = async (req, res) => {
 };
 
 // ✅ Get single restaurant by ID
+// ✅ Get single restaurant by ID WITH MENU
 export const getRestaurantById = async (req, res) => {
   try {
-    const restaurant = await Restaurant.findById(req.params.id).populate("owner", "username email");
+    const restaurant = await Restaurant.findById(req.params.id)
+      .populate("owner", "username email")
+      .populate("menu"); // ⭐ ADD THIS
+
     if (!restaurant)
       return res.status(404).json({ success: false, message: "Restaurant not found" });
 
@@ -62,6 +66,7 @@ export const getRestaurantById = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to fetch restaurant" });
   }
 };
+
 
 // ✅ Update restaurant (Admin or Restaurant Owner)
 export const updateRestaurant = async (req, res) => {

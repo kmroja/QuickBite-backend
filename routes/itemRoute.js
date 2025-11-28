@@ -18,7 +18,15 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // ⭐ Public Route - anyone can view menu items of a restaurant
-itemRouter.get('/restaurant/:id', getMenuByRestaurant);
+itemRouter.get("/restaurant/:id", async (req, res) => {
+  try {
+    const items = await Item.find({ restaurant: req.params.id });
+    res.json({ success: true, items });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error fetching items" });
+  }
+});
+
 
 // ⭐ Protected Routes
 itemRouter.use(authMiddleware(["admin", "restaurant"]));
