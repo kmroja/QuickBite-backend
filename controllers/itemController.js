@@ -105,3 +105,16 @@ export const deleteItem = async (req, res) => {
     res.status(500).json({ message: "Failed to delete item" });
   }
 };
+// GET MENU ITEMS FOR SPECIFIC RESTAURANT (Public)
+export const getItemsByRestaurant = async (req, res) => {
+  try {
+    const restaurantId = req.params.id;
+    const items = await Item.find({ restaurant: restaurantId }).sort({ createdAt: -1 });
+
+    res.json({ success: true, items });
+  } catch (err) {
+    console.error("Error fetching restaurant menu:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch menu" });
+  }
+};
+
