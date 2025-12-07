@@ -117,3 +117,76 @@ export const deleteRestaurant = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to delete restaurant" });
   }
 };
+export const applyRestaurant = async (req, res) => {
+  try {
+    const { name, address, cuisine, description } = req.body;
+
+    if (!name || !address || !cuisine) {
+      return res.status(400).json({ success: false, message: "Required fields missing" });
+    }
+
+    const image = req.file ? getFullImageUrl(req, req.file.filename) : null;
+
+    const restaurant = await Restaurant.create({
+      name,
+      address,
+      cuisine,
+      description,
+      image,
+      owner: req.user._id,
+      status: "pending",
+    });
+
+    res.json({
+      success: true,
+      message: "Restaurant application submitted. Await admin approval.",
+      restaurant,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Failed to apply restaurant" });
+  }
+};
+// ⭐ Get all pending restaurants (Admin Only)
+export const getPendingRestaurants = async (req, res) => {
+  try {
+    const pending = await Restaurant.find({ status: "pending" })
+      .populate("owner", "username email");
+
+    res.json({ success: true, pending });
+  } catch (err) {
+    console.error("Error fetching pending restaurants:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch pending restaurants" });
+  }
+};
+
+
+// ⭐ Approve restaurant application
+export const approveRestaurant = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const restaurant = await Restaurant.findById(id);
+    if (!restaurant)
+      return res.status(404).json({ success: false, message: "Restaurant not found" });
+
+    if (restaurant.status === "approved") {
+      return res.status(400).json({ success: false, message: "Restaurant already approved" });
+    }
+
+    restaurant.status = "approved";
+    await restaurant.save();
+
+    // ⭐ Convert owner role from "user" → "restaurant"
+    await User.findByIdAndUpdate(restaurant.owner, { role: "restaurant" });
+
+    res.json({
+      success: true,
+      message: "Restaurant approved successfully",
+      restaurant,
+    });
+
+  } catch (err) {
+    console.error("Error approving restaurant:", err);
+    res.status(500).json({ success: false, message: "Failed to approve restaurant" });
+  }
+};

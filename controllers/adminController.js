@@ -85,3 +85,32 @@ export const getUserDetails = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch user details", error: err.message });
   }
 };
+export const getPendingRestaurants = async (req, res) => {
+  try {
+    const restaurants = await Restaurant.find({ status: "pending" })
+      .populate("owner", "username email");
+
+    res.json({ success: true, restaurants });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Could not fetch pending restaurants" });
+  }
+};
+export const approveRestaurant = async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findById(req.params.id);
+
+    if (!restaurant) {
+      return res.status(404).json({ success: false, message: "Not found" });
+    }
+
+    restaurant.status = "approved";
+    await restaurant.save();
+
+    // update user role → restaurant
+    await User.findByIdAndUpdate(restaurant.owner, { role: "restaurant" });
+
+    res.json({ success: true, message: "Restaurant approved", restaurant });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Approval failed" });
+  }
+};
