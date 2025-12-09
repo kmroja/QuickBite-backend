@@ -59,6 +59,8 @@ const registerUser = async (req, res) => {
 // LOGIN USER
 const loginUser = async (req, res) => {
   const { email, password } = req.body;
+console.log("Entered Password:", password);
+console.log("Stored Hashed Password:", user.password);
 
   try {
     const user = await userModel.findOne({ email });
