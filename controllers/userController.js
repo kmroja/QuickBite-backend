@@ -25,7 +25,7 @@ const registerUser = async (req, res) => {
       return res.json({ success: false, message: "Invalid email" });
 
     if (password.length < 8)
-      return res.json({ success: false, message: "Password too short" });
+      return res.json({ success: false, message: "Password must be 8 characters" });
 
     let userRole = "user";
 
@@ -38,23 +38,23 @@ const registerUser = async (req, res) => {
       userRole = "admin";
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
+    // ❌ DO NOT HASH HERE — pre-save middleware will hash automatically
     const user = await userModel.create({
       username,
       email,
-      password: hashedPassword,
+      password,  // raw password → schema will hash it
       role: userRole,
     });
 
     const token = createToken(user);
-
     res.status(201).json({ success: true, user, token });
+
   } catch (err) {
-    console.error(err);
+    console.error("Register Error:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 
 // LOGIN USER
 const loginUser = async (req, res) => {
