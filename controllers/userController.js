@@ -64,27 +64,31 @@ const loginUser = async (req, res) => {
     const user = await userModel.findOne({ email });
 
     console.log("Entered Password:", password);
-    console.log("Stored User:", user);       // for debugging
-    if (user) console.log("Stored Hash:", user.password);
 
-    if (!user)
+    if (!user) {
+      console.log("User not found");
       return res.json({ success: false, message: "User not found" });
+    }
+
+    console.log("Stored Hash:", user.password);
 
     const match = await bcrypt.compare(password, user.password);
     console.log("Password Match:", match);
 
-    if (!match)
+    if (!match) {
       return res.json({ success: false, message: "Invalid credentials" });
+    }
 
     const token = createToken(user);
 
-    res.json({ success: true, user, token });
+    return res.json({ success: true, user, token });
 
   } catch (err) {
-    console.error("Login Error:", err);
+    console.error("LOGIN ERROR:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 
 // VERIFY TOKEN
 const verifyToken = async (req, res) => {
