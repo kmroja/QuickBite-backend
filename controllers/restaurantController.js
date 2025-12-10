@@ -163,30 +163,22 @@ export const getPendingRestaurants = async (req, res) => {
 // ⭐ Approve restaurant application
 export const approveRestaurant = async (req, res) => {
   try {
-    const { id } = req.params;
+    const restaurant = await Restaurant.findById(req.params.id);
 
-    const restaurant = await Restaurant.findById(id);
-    if (!restaurant)
-      return res.status(404).json({ success: false, message: "Restaurant not found" });
-
-    if (restaurant.status === "approved") {
-      return res.status(400).json({ success: false, message: "Restaurant already approved" });
+    if (!restaurant) {
+      return res.status(404).json({ message: "Restaurant not found" });
     }
 
     restaurant.status = "approved";
     await restaurant.save();
 
-    // ⭐ Convert owner role from "user" → "restaurant"
+    // ⭐ Upgrade user role
     await User.findByIdAndUpdate(restaurant.owner, { role: "restaurant" });
 
-    res.json({
-      success: true,
-      message: "Restaurant approved successfully",
-      restaurant,
-    });
+    res.json({ success: true, message: "Restaurant approved" });
 
   } catch (err) {
-    console.error("Error approving restaurant:", err);
-    res.status(500).json({ success: false, message: "Failed to approve restaurant" });
+    res.status(500).json({ message: "Error approving restaurant" });
   }
 };
+
