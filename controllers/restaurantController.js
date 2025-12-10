@@ -161,6 +161,9 @@ export const getPendingRestaurants = async (req, res) => {
 
 
 // ⭐ Approve restaurant application
+import User from "../modals/userModel.js";
+import Restaurant from "../modals/restaurantModel.js";
+
 export const approveRestaurant = async (req, res) => {
   try {
     const restaurant = await Restaurant.findById(req.params.id);
@@ -169,16 +172,28 @@ export const approveRestaurant = async (req, res) => {
       return res.status(404).json({ message: "Restaurant not found" });
     }
 
+    // Approve restaurant
     restaurant.status = "approved";
     await restaurant.save();
 
-    // ⭐ Upgrade user role
-    await User.findByIdAndUpdate(restaurant.owner, { role: "restaurant" });
+    // Update user role
+    const user = await User.findByIdAndUpdate(
+      restaurant.owner,
+      { role: "restaurant" },
+      { new: true }
+    );
 
-    res.json({ success: true, message: "Restaurant approved" });
+    res.json({
+      success: true,
+      message: "Restaurant approved successfully",
+      user,
+      restaurant
+    });
 
   } catch (err) {
+    console.error("Approval error:", err);
     res.status(500).json({ message: "Error approving restaurant" });
   }
 };
+
 
