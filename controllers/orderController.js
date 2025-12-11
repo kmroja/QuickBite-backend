@@ -22,13 +22,16 @@ export const createOrder = async (req, res) => {
         const orderItems = items.map(({ item, name, price, imageUrl, quantity }) => {
             const base = item || {};
             return {
-                item: {
-                    name: base.name || name || 'Unknown',
-                    price: Number(base.price ?? price) || 0,
-                    imageUrl: base.imageUrl || imageUrl || ''
-                },
-                quantity: Number(quantity) || 0
-            };
+    item: {
+        name: base.name || name || 'Unknown',
+        price: Number(base.price ?? price) || 0,
+        imageUrl: base.imageUrl || imageUrl || '',
+        restaurantId: base.restaurantId || null,
+        _id: base._id || null
+    },
+    quantity: Number(quantity) || 0
+};
+
         });
 
         const shippingCost = 0;

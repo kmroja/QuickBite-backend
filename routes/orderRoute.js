@@ -22,23 +22,27 @@ orderRouter.put('/getall/:id', updateAnyOrder);
 orderRouter.use(authMiddleware);
 
 // ------- ADD THIS BLOCK -------
-orderRouter.get('/restaurant/:restaurantId', async (req, res) => {
+// ⭐ GET ORDERS FOR A RESTAURANT
+orderRouter.get(
+  "/restaurant/:restaurantId",
+  authMiddleware(["restaurant", "admin"]),
+  async (req, res) => {
     try {
-        const restaurantId = req.params.restaurantId;
+      const restaurantId = req.params.restaurantId;
 
-        const restaurant = await Restaurant.findById(restaurantId);
-        if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+      const orders = await Order.find({
+        "items.item.restaurantId": restaurantId,
+      }).sort({ createdAt: -1 });
 
-        const orders = await Order.find({
-            "items.item._id": { $in: restaurant.menu }
-        }).sort({ createdAt: -1 });
-
-        res.json({ orders });
-    } catch (error) {
-        console.error("Restaurant Orders Error:", error);
-        res.status(500).json({ message: "Server error", error: error.message });
+      res.json({ orders });
+    } catch (err) {
+      console.error("Error fetching restaurant orders:", err);
+      res.status(500).json({ message: "Server Error" });
     }
-});
+  }
+);
+
+
 // -------------------------------
 
 orderRouter.post('/', createOrder);

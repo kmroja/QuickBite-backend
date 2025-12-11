@@ -3,10 +3,11 @@ import mongoose from 'mongoose';
 
 // Nested order item schema
 const orderItemSchema = new mongoose.Schema({
-  item: {
-    name: { type: String, required: true },
-    price: { type: Number, required: true, min: 0 },
-    imageUrl: { type: String, required: true },
+ item: {
+  name: String,
+  price: Number,
+  imageUrl: String,
+  restaurantId: { type: mongoose.Schema.Types.ObjectId, ref: "Restaurant" },
   },
   quantity: { type: Number, required: true, min: 1 },
 }, { _id: true });
