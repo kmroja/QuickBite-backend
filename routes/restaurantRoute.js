@@ -10,27 +10,27 @@ import {
   applyRestaurant,
   getPendingRestaurants,
   approveRestaurant,
-  getRestaurantByOwner
+  getRestaurantByOwner,
 } from "../controllers/restaurantController.js";
 
 const router = express.Router();
 
-// ------------------------------------
-// MULTER SETUP
-// ------------------------------------
+// ------------------- MULTER --------------------
 const storage = multer.diskStorage({
   destination: (_, __, cb) => cb(null, "uploads/"),
   filename: (_, file, cb) => cb(null, `${Date.now()}-${file.originalname}`),
 });
 const upload = multer({ storage });
 
-// ===================================================================
-// ⭐ ORDER OF ROUTES IMPORTANT
-// ===================================================================
+// ----------------- MUST COME FIRST -----------------
+// ⭐ Restaurant Owner fetch his own restaurant
+router.get(
+  "/owner/:ownerId",
+  authMiddleware(["restaurant", "admin"]),
+  getRestaurantByOwner
+);
 
-// -------------------------------------------------------------
-// ⭐ RESTAURANT OWNER APPLY
-// -------------------------------------------------------------
+// ----------------- APPLY FOR RESTAURANT --------------
 router.post(
   "/apply",
   authMiddleware(["user"]),
@@ -38,32 +38,15 @@ router.post(
   applyRestaurant
 );
 
-// -------------------------------------------------------------
-// ⭐ ADMIN ROUTES
-// -------------------------------------------------------------
+// ----------------- ADMIN ROUTES ----------------------
 router.get("/pending", authMiddleware(["admin"]), getPendingRestaurants);
 router.put("/approve/:id", authMiddleware(["admin"]), approveRestaurant);
 
-// -------------------------------------------------------------
-// ⭐ RESTAURANT OWNER FETCH HIS OWN RESTAURANT (Dashboard)
-// -------------------------------------------------------------
-// ONLY THIS ROUTE — remove duplicates
-router.get(
-  "/owner/:ownerId",
-  authMiddleware(["restaurant"]),
-  getRestaurantByOwner
-);
-
-// -------------------------------------------------------------
-// ⭐ PUBLIC ROUTES
-// -------------------------------------------------------------
+// --------------- PUBLIC ROUTES ------------------------
 router.get("/", getAllRestaurants);
-
-// -------------------------------------------------------------
-// ⭐ ROUTES USING :id (must be last)
-// -------------------------------------------------------------
 router.get("/:id", getRestaurantById);
 
+// --------------- CRUD (Admin or Owner) ----------------
 router.post(
   "/",
   authMiddleware(["admin", "restaurant"]),
