@@ -1,6 +1,7 @@
 import Restaurant from "../modals/restaurantModel.js";
 import path from "path";
 import fs from "fs";
+import User from "../modals/userModel.js";
 
 // ✅ Helper: Build full image URL
 const getFullImageUrl = (req, filename) => {

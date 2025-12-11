@@ -10,9 +10,8 @@ import {
   applyRestaurant,
   getPendingRestaurants,
   approveRestaurant,
+  getRestaurantByOwner
 } from "../controllers/restaurantController.js";
-
-import Restaurant from "../modals/restaurantModel.js";
 
 const router = express.Router();
 
@@ -26,7 +25,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // ===================================================================
-// ⭐ ORDER OF ROUTES MATTERS
+// ⭐ ORDER OF ROUTES IMPORTANT
 // ===================================================================
 
 // -------------------------------------------------------------
@@ -46,30 +45,13 @@ router.get("/pending", authMiddleware(["admin"]), getPendingRestaurants);
 router.put("/approve/:id", authMiddleware(["admin"]), approveRestaurant);
 
 // -------------------------------------------------------------
-// ⭐ RESTAURANT OWNER FETCH HIS RESTAURANT
-//    (PLACE **BEFORE** `/:id` ROUTE)
+// ⭐ RESTAURANT OWNER FETCH HIS OWN RESTAURANT (Dashboard)
 // -------------------------------------------------------------
+// ONLY THIS ROUTE — remove duplicates
 router.get(
-  "/owner/:userId",
-  authMiddleware(["restaurant", "admin"]),
-  async (req, res) => {
-    try {
-      const restaurant = await Restaurant.findOne({
-        owner: req.params.userId,
-      });
-
-      if (!restaurant) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Restaurant not found" });
-      }
-
-      res.json({ success: true, restaurant });
-    } catch (err) {
-      console.error("Error fetching restaurant:", err);
-      res.status(500).json({ success: false, message: "Server error" });
-    }
-  }
+  "/owner/:ownerId",
+  authMiddleware(["restaurant"]),
+  getRestaurantByOwner
 );
 
 // -------------------------------------------------------------
@@ -78,7 +60,7 @@ router.get(
 router.get("/", getAllRestaurants);
 
 // -------------------------------------------------------------
-// ⭐ ROUTES USING ID (MUST BE LAST)
+// ⭐ ROUTES USING :id (must be last)
 // -------------------------------------------------------------
 router.get("/:id", getRestaurantById);
 
@@ -97,10 +79,5 @@ router.put(
 );
 
 router.delete("/:id", authMiddleware(["admin"]), deleteRestaurant);
-
-// -------------------------------------------------------------
-// ❌ REMOVE DUPLICATE OWNER ROUTE
-// -------------------------------------------------------------
-// router.get("/owner/:ownerId", authMiddleware, getRestaurantByOwner);
 
 export default router;
