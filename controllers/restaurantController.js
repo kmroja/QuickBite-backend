@@ -161,8 +161,7 @@ export const getPendingRestaurants = async (req, res) => {
 
 
 // ⭐ Approve restaurant application
-import User from "../modals/userModel.js";
-import Restaurant from "../modals/restaurantModel.js";
+
 
 export const approveRestaurant = async (req, res) => {
   try {
@@ -196,4 +195,24 @@ export const approveRestaurant = async (req, res) => {
   }
 };
 
+// ⭐ GET RESTAURANT BY OWNER (Restaurant Dashboard)
+export const getRestaurantByOwner = async (req, res) => {
+  try {
+    const ownerId = req.params.ownerId;
+
+    const restaurant = await Restaurant.findOne({ owner: ownerId });
+
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: "No restaurant found for this owner",
+      });
+    }
+
+    res.json({ success: true, restaurant });
+  } catch (err) {
+    console.error("Owner Restaurant Error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
 

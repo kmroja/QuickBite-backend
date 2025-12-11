@@ -11,6 +11,7 @@ import {
   getPendingRestaurants,
   approveRestaurant,
 } from "../controllers/restaurantController.js";
+
 import Restaurant from "../modals/restaurantModel.js";
 
 const router = express.Router();
@@ -25,7 +26,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // ===================================================================
-// ⭐ ORDER OF ROUTES MUST BE CORRECT
+// ⭐ ORDER OF ROUTES MATTERS
 // ===================================================================
 
 // -------------------------------------------------------------
@@ -45,14 +46,17 @@ router.get("/pending", authMiddleware(["admin"]), getPendingRestaurants);
 router.put("/approve/:id", authMiddleware(["admin"]), approveRestaurant);
 
 // -------------------------------------------------------------
-// ⭐ RESTAURANT OWNER FETCH HIS RESTAURANT  (PLACE BEFORE :id)
+// ⭐ RESTAURANT OWNER FETCH HIS RESTAURANT
+//    (PLACE **BEFORE** `/:id` ROUTE)
 // -------------------------------------------------------------
 router.get(
   "/owner/:userId",
-  authMiddleware(["restaurant"]),
+  authMiddleware(["restaurant", "admin"]),
   async (req, res) => {
     try {
-      const restaurant = await Restaurant.findOne({ owner: req.params.userId });
+      const restaurant = await Restaurant.findOne({
+        owner: req.params.userId,
+      });
 
       if (!restaurant) {
         return res
@@ -93,5 +97,10 @@ router.put(
 );
 
 router.delete("/:id", authMiddleware(["admin"]), deleteRestaurant);
+
+// -------------------------------------------------------------
+// ❌ REMOVE DUPLICATE OWNER ROUTE
+// -------------------------------------------------------------
+// router.get("/owner/:ownerId", authMiddleware, getRestaurantByOwner);
 
 export default router;
