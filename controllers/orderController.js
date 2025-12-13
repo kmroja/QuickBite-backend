@@ -217,3 +217,26 @@ export const updateOrder = async (req, res) => {
         res.status(500).json({ message: 'Server Error', error: error.message });
     }
 };
+// NEW — Get orders for a specific restaurant
+// Get orders for a specific restaurant
+export const getOrdersByRestaurant = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+
+    if (!restaurantId) {
+      return res.status(400).json({ message: "Restaurant ID is required" });
+    }
+
+    const orders = await Order.find({
+      "items.item.restaurantId": restaurantId
+    }).sort({ createdAt: -1 });
+
+    res.json({ orders });
+  } catch (error) {
+    console.error("getOrdersByRestaurant error:", error);
+    res.status(500).json({
+      message: "Server Error",
+      error: error.message
+    });
+  }
+};
