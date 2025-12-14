@@ -1,5 +1,4 @@
 import express from "express";
-import authMiddleware from "../middleware/auth.js";
 import {
   createOrder,
   getOrders,
@@ -8,26 +7,26 @@ import {
   getOrderById,
   updateOrder,
   updateAnyOrder,
-  getOrdersByRestaurant
+  getOrdersByRestaurant,
 } from "../controllers/orderController.js";
+import authMiddleware from "../middleware/auth.js";
 
 const orderRouter = express.Router();
 
-// ================= ADMIN =================
-orderRouter.get("/getall", getAllOrders);
-orderRouter.put("/getall/:id", updateAnyOrder);
+// Admin only
+orderRouter.get("/getall", authMiddleware(["admin"]), getAllOrders);
+orderRouter.put("/getall/:id", authMiddleware(["admin"]), updateAnyOrder);
 
-// ================= AUTH =================
+// Protected
 orderRouter.use(authMiddleware);
 
-// ================= RESTAURANT =================
+// ⭐ RESTAURANT ORDERS (IMPORTANT: BEFORE :id)
 orderRouter.get(
   "/restaurant/:restaurantId",
   authMiddleware(["restaurant", "admin"]),
   getOrdersByRestaurant
 );
 
-// ================= USER =================
 orderRouter.post("/", createOrder);
 orderRouter.get("/", getOrders);
 orderRouter.get("/confirm", confirmPayment);

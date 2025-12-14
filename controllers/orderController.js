@@ -223,20 +223,21 @@ export const getOrdersByRestaurant = async (req, res) => {
   try {
     const { restaurantId } = req.params;
 
-    if (!restaurantId) {
-      return res.status(400).json({ message: "Restaurant ID is required" });
-    }
-
     const orders = await Order.find({
-      "items.item.restaurantId": restaurantId
-    }).sort({ createdAt: -1 });
+      "items.item.restaurantId": restaurantId,
+    })
+      .sort({ createdAt: -1 })
+      .lean();
 
-    res.json({ orders });
+    return res.status(200).json({
+      success: true,
+      orders,
+    });
   } catch (error) {
     console.error("getOrdersByRestaurant error:", error);
     res.status(500).json({
-      message: "Server Error",
-      error: error.message
+      success: false,
+      message: "Failed to fetch restaurant orders",
     });
   }
 };
