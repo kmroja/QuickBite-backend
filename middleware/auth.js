@@ -8,51 +8,42 @@ const authMiddleware = (roles = null) => {
   return async (req, res, next) => {
     try {
       const authHeader = req.headers.authorization;
-
       if (!authHeader) {
-        return res.status(401).json({ success: false, message: "No token" });
+        return res.status(401).json({ message: "No token provided" });
       }
 
       const token = authHeader.split(" ")[1];
+      if (!token) {
+        return res.status(401).json({ message: "Invalid token format" });
+      }
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      const userId = decoded._id; // ✅ ALWAYS _id
-
-      if (!userId) {
-        return res.status(401).json({ success: false, message: "Invalid payload" });
-      }
-
-      const user = await User.findById(userId).select("-password");
+      const user = await User.findById(decoded._id).select("-password");
       if (!user) {
-        return res.status(401).json({ success: false, message: "User not found" });
+        return res.status(401).json({ message: "User not found" });
       }
 
-      req.user = user;
-
-      // Role based guard
+      // Role-based access
       if (roles) {
         const allowed = Array.isArray(roles) ? roles : [roles];
         if (!allowed.includes(user.role)) {
-          return res.status(403).json({
-            success: false,
-            message: "Forbidden: insufficient role",
-          });
+          return res.status(403).json({ message: "Forbidden" });
         }
       }
 
+      req.user = user;
       next();
     } catch (err) {
-      return res.status(401).json({
-        success: false,
-        message: "Auth failed",
-        error: err.message,
-      });
+      console.error("Auth error:", err.message);
+      return res.status(401).json({ message: "Authentication failed" });
     }
   };
 };
 
 export default authMiddleware;
+
+/* ✅ ADD THIS BACK */
 export const adminMiddleware = authMiddleware(["admin"]);
 
 
