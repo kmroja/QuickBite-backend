@@ -65,6 +65,8 @@ app.use("/api/reviews", reviewRoutes);
 app.use("/api/food-review", foodReviewRoutes);
 app.use("/api/restaurants", restaurantRouter);
 app.use("/api/restaurant-applications", restaurantApplicationRouter);
+app.use("/uploads", express.static("uploads"));
+
 // ✅ Health Check Route
 app.get("/", (req, res) => {
   res.send("✅ QuickBite API is running successfully.");

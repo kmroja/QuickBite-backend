@@ -62,32 +62,35 @@ const loginUser = async (req, res) => {
 
   try {
     const user = await userModel.findOne({ email });
-
-    console.log("Entered Password:", password);
-
     if (!user) {
-      console.log("User not found");
       return res.json({ success: false, message: "User not found" });
     }
 
-    console.log("Stored Hash:", user.password);
-
     const match = await bcrypt.compare(password, user.password);
-    console.log("Password Match:", match);
-
     if (!match) {
       return res.json({ success: false, message: "Invalid credentials" });
     }
 
     const token = createToken(user);
 
-    return res.json({ success: true, user, token });
+    let restaurantId = null;
+    if (user.role === "restaurant") {
+      const restaurant = await Restaurant.findOne({ owner: user._id });
+      if (restaurant) restaurantId = restaurant._id;
+    }
 
+    return res.json({
+      success: true,
+      token,
+      user,
+      restaurantId,
+    });
   } catch (err) {
     console.error("LOGIN ERROR:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 
 
 // VERIFY TOKEN
