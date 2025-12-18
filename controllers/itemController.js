@@ -2,50 +2,55 @@ import Item from "../modals/item.js";
 import Restaurant from "../modals/restaurantModel.js";
 
 // ⭐ CREATE ITEM
+
 export const createItem = async (req, res) => {
   try {
-    const { name, description, price, restaurant } = req.body;
-const restaurantId = restaurant;
-if (!restaurantId) {
-  return res.status(400).json({
-    message: "restaurantId is required"
-  });
-}
+    console.log("BODY 👉", req.body);
+    console.log("FILE 👉", req.file);
+    console.log("USER 👉", req.user);
 
+    const { name, description, price, restaurantId } = req.body;
 
     if (!name || !price || !restaurantId) {
-      return res.status(400).json({ message: "Name, price, and restaurantId are required" });
+      return res.status(400).json({
+        message: "name, price, and restaurantId are required",
+      });
     }
 
-    // If restaurant owner → verify ownership
+    // 🔐 Ownership check
     if (req.user.role === "restaurant") {
       const restaurant = await Restaurant.findById(restaurantId);
 
-      if (!restaurant) return res.status(404).json({ message: "Restaurant not found" });
+      if (!restaurant) {
+        return res.status(404).json({ message: "Restaurant not found" });
+      }
 
-      if (!restaurant.owner || String(restaurant.owner) !== String(req.user._id)) {
+      if (String(restaurant.owner) !== String(req.user._id)) {
         return res.status(403).json({
-          message: "Access denied: You do not own this restaurant",
+          message: "Access denied: not your restaurant",
         });
       }
     }
 
-    const newItem = new Item({
+    const newItem = await Item.create({
       name,
       description,
       price,
       restaurant: restaurantId,
-      imageUrl: req.file ? `/uploads/${req.file.filename}` : "",
+      imageUrl: req.file ? req.file.filename : "",
     });
 
-    await newItem.save();
+    await Restaurant.findByIdAndUpdate(restaurantId, {
+      $push: { menu: newItem._id },
+    });
 
-    await Restaurant.findByIdAndUpdate(restaurantId, { $push: { menu: newItem._id } });
-
-    res.status(201).json(newItem);
+    res.status(201).json({ success: true, item: newItem });
   } catch (err) {
     console.error("Create item error:", err);
-    res.status(500).json({ message: "Failed to create item", error: err.message });
+    res.status(500).json({
+      message: "Failed to create item",
+      error: err.message,
+    });
   }
 };
 
