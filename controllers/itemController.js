@@ -6,6 +6,11 @@ export const createItem = async (req, res) => {
   try {
     const { name, description, price, restaurant } = req.body;
 const restaurantId = restaurant;
+if (!restaurantId) {
+  return res.status(400).json({
+    message: "restaurantId is required"
+  });
+}
 
 
     if (!name || !price || !restaurantId) {
