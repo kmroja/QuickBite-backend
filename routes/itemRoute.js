@@ -6,7 +6,8 @@ import {
   createItem,
   getItems,
   deleteItem,
-  getItemsByRestaurant
+  getItemsByRestaurant,
+  updateItem 
 } from "../controllers/itemController.js";
 
 const itemRouter = express.Router();
@@ -24,7 +25,7 @@ const upload = multer({ storage });
 // ⭐ PUBLIC ROUTE → Anyone can view menu of a restaurant
 // --------------------------------------------------------
 itemRouter.get("/restaurant/:id", getItemsByRestaurant);
-
+itemRouter.put("/:id", upload.single("image"), updateItem);
 
 // --------------------------------------------------------
 // ⭐ PROTECTED ROUTES → Only ADMIN + RESTAURANT owner
@@ -33,6 +34,7 @@ itemRouter.use(authMiddleware(["admin", "restaurant"]));
 
 itemRouter.post("/", upload.single("image"), createItem);
 itemRouter.get("/", getItems);
+itemRouter.put("/:id", upload.single("image"), updateItem); 
 itemRouter.delete("/:id", deleteItem);
 
 
