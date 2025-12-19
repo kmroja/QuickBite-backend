@@ -7,7 +7,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // Create Order
 
-export const createItem = async (req, res) => {
+export const createOrder = async (req, res) => {
   try {
     console.log("USER 👉", req.user);
     console.log("BODY 👉", req.body);
