@@ -85,20 +85,30 @@ export const getItems = async (req, res) => {
     let items;
 
     if (req.user.role === "restaurant") {
-      const restaurant = await Restaurant.findOne({ owner: req.user._id });
-      if (!restaurant) return res.json([]);
+      const restaurant = await Restaurant.findOne({
+        owner: req.user._id,
+      });
 
-      items = await Item.find({ restaurant: restaurant._id }).sort({ createdAt: -1 });
+      if (!restaurant) {
+        return res.json([]);
+      }
+
+      items = await Item.find({
+        restaurant: restaurant._id,
+      }).sort({ createdAt: -1 });
+
     } else {
+      // admin
       items = await Item.find().sort({ createdAt: -1 });
     }
 
-    res.json(items);
+    res.json({ success: true, items });
   } catch (err) {
     console.error("Get items error:", err);
     res.status(500).json({ message: "Failed to fetch items" });
   }
 };
+
 
 // ⭐ PUBLIC MENU VIEW — anyone can see restaurant menu
 export const getMenuByRestaurant = async (req, res) => {
