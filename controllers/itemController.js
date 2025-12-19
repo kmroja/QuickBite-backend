@@ -11,13 +11,14 @@ export const createItem = async (req, res) => {
 
     const { name, description, price, restaurantId } = req.body;
 
-    if (!name || !price || !restaurantId) {
+    // 🔴 STRONG VALIDATION
+    if (!name || !price || !restaurantId || restaurantId === "undefined") {
       return res.status(400).json({
-        message: "name, price, and restaurantId are required",
+        message: "name, price, and valid restaurantId are required",
       });
     }
 
-    // 🔐 Ownership check
+    // 🔐 Ownership check (restaurant role only)
     if (req.user.role === "restaurant") {
       const restaurant = await Restaurant.findById(restaurantId);
 
@@ -53,6 +54,7 @@ export const createItem = async (req, res) => {
     });
   }
 };
+
 
 // ⭐ GET ITEMS (admin or restaurant dashboard)
 export const getItems = async (req, res) => {

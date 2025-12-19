@@ -1,7 +1,9 @@
 import userModel from "../modals/userModel.js";
+import Restaurant from "../modals/restaurantModel.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import validator from "validator";
+
 
 // 🔐 Create JWT token
 const createToken = (user) => {
@@ -58,38 +60,57 @@ const registerUser = async (req, res) => {
 
 // LOGIN USER
 const loginUser = async (req, res) => {
-  const { email, password } = req.body;
-
   try {
+    const { email, password } = req.body;
+
+    // ✅ FIXED: use userModel
     const user = await userModel.findOne({ email });
     if (!user) {
-      return res.json({ success: false, message: "User not found" });
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials",
+      });
     }
 
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
-      return res.json({ success: false, message: "Invalid credentials" });
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
+
+    let restaurantId = null;
+
+    // ✅ Restaurant role handling
+    if (user.role === "restaurant") {
+      const restaurant = await Restaurant.findOne({ owner: user._id });
+      if (!restaurant) {
+        return res.status(404).json({
+          success: false,
+          message: "Restaurant not found for this account",
+        });
+      }
+      restaurantId = restaurant._id;
     }
 
     const token = createToken(user);
 
-    let restaurantId = null;
-    if (user.role === "restaurant") {
-      const restaurant = await Restaurant.findOne({ owner: user._id });
-      if (restaurant) restaurantId = restaurant._id;
-    }
-
-    return res.json({
+    res.json({
       success: true,
       token,
       user,
       restaurantId,
     });
   } catch (err) {
-    console.error("LOGIN ERROR:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("Login error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
+
 
 
 
