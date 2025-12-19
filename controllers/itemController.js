@@ -1,18 +1,19 @@
+
+import mongoose from "mongoose";
 import Item from "../modals/item.js";
 import Restaurant from "../modals/restaurantModel.js";
 
 // ⭐ CREATE ITEM
-
 export const createItem = async (req, res) => {
   try {
     console.log("USER 👉", req.user);
     console.log("BODY 👉", req.body);
 
-    const { name, description, price } = req.body;
+    const { name, description, price, category } = req.body;
 
-    if (!name || !price) {
+    if (!name || !price || !category) {
       return res.status(400).json({
-        message: "name and price are required",
+        message: "name, price and category are required",
       });
     }
 
@@ -33,7 +34,7 @@ export const createItem = async (req, res) => {
       restaurantId = restaurant._id;
     }
 
-    // ✅ ADMIN FLOW (optional)
+    // ✅ ADMIN FLOW
     if (req.user.role === "admin") {
       if (!req.body.restaurantId) {
         return res.status(400).json({
@@ -54,8 +55,9 @@ export const createItem = async (req, res) => {
       name,
       description,
       price,
+      category, // ✅ THIS WAS THE MAIN BUG
       restaurant: restaurantId,
-      imageUrl: req.file?.filename || "",
+      imageUrl: req.file ? req.file.filename : "",
     });
 
     await Restaurant.findByIdAndUpdate(restaurantId, {
@@ -74,6 +76,7 @@ export const createItem = async (req, res) => {
     });
   }
 };
+
 
 
 // ⭐ GET ITEMS (admin or restaurant dashboard)
