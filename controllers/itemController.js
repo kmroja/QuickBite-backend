@@ -5,32 +5,49 @@ import Restaurant from "../modals/restaurantModel.js";
 
 export const createItem = async (req, res) => {
   try {
-    console.log("BODY 👉", req.body);
-    console.log("FILE 👉", req.file);
     console.log("USER 👉", req.user);
+    console.log("BODY 👉", req.body);
 
-    const { name, description, price, restaurantId } = req.body;
+    const { name, description, price } = req.body;
 
-    // 🔴 STRONG VALIDATION
-    if (!name || !price || !restaurantId || restaurantId === "undefined") {
+    if (!name || !price) {
       return res.status(400).json({
-        message: "name, price, and valid restaurantId are required",
+        message: "name and price are required",
       });
     }
 
-    // 🔐 Ownership check (restaurant role only)
+    let restaurantId;
+
+    // ✅ RESTAURANT OWNER FLOW
     if (req.user.role === "restaurant") {
-      const restaurant = await Restaurant.findById(restaurantId);
+      const restaurant = await Restaurant.findOne({
+        owner: req.user._id,
+      });
 
       if (!restaurant) {
-        return res.status(404).json({ message: "Restaurant not found" });
-      }
-
-      if (String(restaurant.owner) !== String(req.user._id)) {
-        return res.status(403).json({
-          message: "Access denied: not your restaurant",
+        return res.status(400).json({
+          message: "No restaurant linked to this account",
         });
       }
+
+      restaurantId = restaurant._id;
+    }
+
+    // ✅ ADMIN FLOW (optional)
+    if (req.user.role === "admin") {
+      if (!req.body.restaurantId) {
+        return res.status(400).json({
+          message: "restaurantId is required for admin",
+        });
+      }
+
+      if (!mongoose.Types.ObjectId.isValid(req.body.restaurantId)) {
+        return res.status(400).json({
+          message: "Invalid restaurantId",
+        });
+      }
+
+      restaurantId = req.body.restaurantId;
     }
 
     const newItem = await Item.create({
@@ -38,14 +55,17 @@ export const createItem = async (req, res) => {
       description,
       price,
       restaurant: restaurantId,
-      imageUrl: req.file ? req.file.filename : "",
+      imageUrl: req.file?.filename || "",
     });
 
     await Restaurant.findByIdAndUpdate(restaurantId, {
       $push: { menu: newItem._id },
     });
 
-    res.status(201).json({ success: true, item: newItem });
+    res.status(201).json({
+      success: true,
+      item: newItem,
+    });
   } catch (err) {
     console.error("Create item error:", err);
     res.status(500).json({
