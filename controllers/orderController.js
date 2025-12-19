@@ -6,89 +6,79 @@ import 'dotenv/config';
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // Create Order
-export const createOrder = async (req, res) => {
-    try {
-        const {
-            firstName, lastName, phone, email,
-            address, city, zipCode,
-            paymentMethod, subtotal, tax, total,
-            items
-        } = req.body;
 
-        if (!items || !Array.isArray(items) || items.length === 0) {
-            return res.status(400).json({ message: 'Invalid or empty items array' });
-        }
+export const createItem = async (req, res) => {
+  try {
+    console.log("USER 👉", req.user);
+    console.log("BODY 👉", req.body);
 
-        const orderItems = items.map(({ item, name, price, imageUrl, quantity }) => {
-            const base = item || {};
-            return {
-    item: {
-        name: base.name || name || 'Unknown',
-        price: Number(base.price ?? price) || 0,
-        imageUrl: base.imageUrl || imageUrl || '',
-        restaurantId: base.restaurantId || null,
-        _id: base._id || null
-    },
-    quantity: Number(quantity) || 0
-};
+    const { name, description, price, category } = req.body;
 
-        });
-
-        const shippingCost = 0;
-        let newOrder;
-
-        if (paymentMethod === 'online') {
-            const session = await stripe.checkout.sessions.create({
-                payment_method_types: ['card'],
-                mode: 'payment',
-                line_items: orderItems.map(o => ({
-                    price_data: {
-                        currency: 'inr',
-                        product_data: { name: o.item.name },
-                        unit_amount: Math.round(o.item.price * 100)
-                    },
-                    quantity: o.quantity
-                })),
-                customer_email: email,
-                success_url: `${process.env.FRONTEND_URL}/myorder/verify?success=true&session_id={CHECKOUT_SESSION_ID}`,
-                cancel_url: `${process.env.FRONTEND_URL}/checkout?payment_status=cancel`,
-                metadata: { firstName, lastName, email, phone }
-            });
-
-            newOrder = new Order({
-                user: req.user._id,
-                firstName, lastName, phone, email,
-                address, city, zipCode,
-                paymentMethod, subtotal, tax, total,
-                shipping: shippingCost,
-                items: orderItems,
-                paymentIntentId: session.payment_intent,
-                sessionId: session.id,
-                paymentStatus: 'pending'
-            });
-
-            await newOrder.save();
-            return res.status(201).json({ order: newOrder, checkoutUrl: session.url });
-        }
-
-        // COD Handling
-        newOrder = new Order({
-            user: req.user._id,
-            firstName, lastName, phone, email,
-            address, city, zipCode,
-            paymentMethod, subtotal, tax, total,
-            shipping: shippingCost,
-            items: orderItems,
-            paymentStatus: 'succeeded'
-        });
-
-        await newOrder.save();
-        res.status(201).json({ order: newOrder, checkoutUrl: null });
-    } catch (error) {
-        console.error('createOrder error:', error);
-        res.status(500).json({ message: 'Server Error', error: error.message });
+    // 🔒 STRICT VALIDATION (schema-aligned)
+    if (!name || !description || !price || !category) {
+      return res.status(400).json({
+        message: "name, description, price and category are required",
+      });
     }
+
+    let restaurantId;
+
+    // ✅ RESTAURANT OWNER FLOW
+    if (req.user.role === "restaurant") {
+      const restaurant = await Restaurant.findOne({ owner: req.user._id });
+
+      if (!restaurant) {
+        return res.status(400).json({
+          message: "No restaurant linked to this account",
+        });
+      }
+
+      restaurantId = restaurant._id;
+    }
+
+    // ✅ ADMIN FLOW
+    if (req.user.role === "admin") {
+      if (!req.body.restaurantId) {
+        return res.status(400).json({
+          message: "restaurantId is required for admin",
+        });
+      }
+
+      if (!mongoose.Types.ObjectId.isValid(req.body.restaurantId)) {
+        return res.status(400).json({
+          message: "Invalid restaurantId",
+        });
+      }
+
+      restaurantId = req.body.restaurantId;
+    }
+
+    const newItem = await Item.create({
+      name,
+      description,
+      category, // ✅ REQUIRED
+      price,
+      restaurant: restaurantId,
+      imageUrl: req.file?.filename || "",
+    });
+
+    await Restaurant.findByIdAndUpdate(restaurantId, {
+      $push: { menu: newItem._id },
+    });
+
+    res.status(201).json({
+      success: true,
+      item: newItem,
+    });
+  } catch (err) {
+    console.error("Create item error:", err);
+    res.status(500).json({
+      message: "Failed to create item",
+      error: err.message,
+    });
+  }
 };
+
 
 // Confirm Payment
 export const confirmPayment = async (req, res) => {
