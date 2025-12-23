@@ -1,51 +1,43 @@
 // server/middleware/authMiddleware.js
 // middleware/auth.js
 // middleware/auth.js
-import jwt from "jsonwebtoken";
-import User from "../modals/userModel.js";
+import jwt from 'jsonwebtoken';
+import User from '../modals/userModel.js';
 
 const authMiddleware = (roles = null) => {
   return async (req, res, next) => {
     try {
       const authHeader = req.headers.authorization;
-      if (!authHeader) {
-        return res.status(401).json({ message: "No token provided" });
+      if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({ message: 'No token provided' });
       }
 
-      const token = authHeader.split(" ")[1];
-      if (!token) {
-        return res.status(401).json({ message: "Invalid token format" });
-      }
-
+      const token = authHeader.split(' ')[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      const user = await User.findById(decoded._id).select("-password");
+      const user = await User.findById(decoded._id).select('-password');
       if (!user) {
-        return res.status(401).json({ message: "User not found" });
+        return res.status(401).json({ message: 'User not found' });
       }
 
-      // Role-based access
       if (roles) {
         const allowed = Array.isArray(roles) ? roles : [roles];
         if (!allowed.includes(user.role)) {
-          return res.status(403).json({ message: "Forbidden" });
+          return res.status(403).json({ message: 'Forbidden' });
         }
       }
 
       req.user = user;
       next();
-    } catch (err) {
-      console.error("Auth error:", err.message);
-      return res.status(401).json({ message: "Authentication failed" });
+    } catch (error) {
+      console.error('Auth error:', error.message);
+      res.status(401).json({ message: 'Authentication failed' });
     }
   };
 };
 
 export default authMiddleware;
-
-/* ✅ ADD THIS BACK */
-export const adminMiddleware = authMiddleware(["admin"]);
-
+export const adminMiddleware = authMiddleware(['admin']);
 
 
 

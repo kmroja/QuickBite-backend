@@ -16,72 +16,19 @@ const router = express.Router();
  * ==========================
  */
 
-// GET /api/cart
-router.get(
-  '/',
-  authMiddleware(['user']),
-  (req, res, next) => {
-    console.log("➡️ GET /api/cart by user:", req.user._id);
-    next();
-  },
-  getCart
-);
+// GET cart
+router.get('/', authMiddleware(['user']), getCart);
 
-// POST /api/cart (Add item)
-router.post(
-  '/',
-  authMiddleware(['user']),
-  (req, res, next) => {
-    console.log(
-      "➡️ POST /api/cart by user:",
-      req.user._id,
-      "body:",
-      req.body
-    );
-    next();
-  },
-  addToCart
-);
+// ADD item to cart
+router.post('/', authMiddleware(['user']), addToCart);
 
-// PUT /api/cart/:id (Update quantity)
-router.put(
-  '/:id',
-  authMiddleware(['user']),
-  (req, res, next) => {
-    console.log(
-      `➡️ PUT /api/cart/${req.params.id} by user:`,
-      req.user._id,
-      "quantity:",
-      req.body.quantity
-    );
-    next();
-  },
-  updateCartItem
-);
+// UPDATE quantity
+router.put('/:id', authMiddleware(['user']), updateCartItem);
 
-// DELETE /api/cart/:id
-router.delete(
-  '/:id',
-  authMiddleware(['user']),
-  (req, res, next) => {
-    console.log(
-      `➡️ DELETE /api/cart/${req.params.id} by user:`,
-      req.user._id
-    );
-    next();
-  },
-  deleteCartItem
-);
+// DELETE item
+router.delete('/:id', authMiddleware(['user']), deleteCartItem);
 
-// POST /api/cart/clear
-router.post(
-  '/clear',
-  authMiddleware(['user']),
-  (req, res, next) => {
-    console.log("➡️ POST /api/cart/clear by user:", req.user._id);
-    next();
-  },
-  clearCart
-);
+// CLEAR cart
+router.post('/clear', authMiddleware(['user']), clearCart);
 
 export default router;
