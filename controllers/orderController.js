@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 import Order from "../modals/order.js";
-import Cart from "../modals/cart.js";
+import { CartItem } from "../modals/cartItem.js"; // ✅ CORRECT
 import Restaurant from "../modals/restaurantModel.js";
 import "dotenv/config";
 
@@ -18,25 +18,30 @@ export const createOrder = async (req, res) => {
       });
     }
 
-    // 🛒 Fetch cart
-    const cart = await Cart.findOne({ user: userId }).populate(
-      "items.item"
-    );
+    // 🛒 Fetch user's cart items
+    const cartItems = await CartItem.find({ user: userId }).populate("item");
 
-    if (!cart || cart.items.length === 0) {
+    if (!cartItems || cartItems.length === 0) {
       return res.status(400).json({ message: "Cart is empty" });
     }
 
-    // 💰 Calculate total
-    const totalAmount = cart.items.reduce(
-      (sum, i) => sum + i.item.price * i.quantity,
+    // 💰 Calculate total amount
+    const totalAmount = cartItems.reduce(
+      (sum, cart) => sum + cart.item.price * cart.quantity,
       0
     );
+
+    // 📦 Prepare order items
+    const orderItems = cartItems.map((cart) => ({
+      item: cart.item._id,
+      quantity: cart.quantity,
+      price: cart.item.price,
+    }));
 
     // 📦 Create order
     const order = await Order.create({
       user: userId,
-      items: cart.items,
+      items: orderItems,
       address,
       paymentMethod,
       totalAmount,
@@ -46,8 +51,7 @@ export const createOrder = async (req, res) => {
     });
 
     // 🧹 Clear cart
-    cart.items = [];
-    await cart.save();
+    await CartItem.deleteMany({ user: userId });
 
     res.status(201).json({
       success: true,
@@ -106,7 +110,7 @@ export const getOrders = async (req, res) => {
       if (!restaurant) return res.json([]);
 
       orders = await Order.find({
-        "items.item.restaurant": restaurant._id,
+        "items.item": { $in: restaurant.menu },
       }).sort({ createdAt: -1 });
     } else if (req.user.role === "user") {
       orders = await Order.find({
