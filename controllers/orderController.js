@@ -26,7 +26,6 @@ export const createOrder = async (req, res) => {
       paymentMethod,
     } = req.body;
 
-    // 🔒 VALIDATION
     if (
       !firstName ||
       !phone ||
@@ -40,14 +39,24 @@ export const createOrder = async (req, res) => {
       });
     }
 
-    // 📦 Format order items
-    const orderItems = items.map((i) => ({
-      item: i.item._id || i.item,
-      quantity: i.quantity,
-      price: i.price || i.item.price,
-    }));
+    // ✅ SAFE ITEM NORMALIZATION
+    const orderItems = items.map((i) => {
+      const itemId =
+        typeof i.item === "object" ? i.item._id : i.item;
 
-    // 📦 Create order
+      if (!itemId) {
+        throw new Error("Invalid item in order payload");
+      }
+
+      return {
+        item: itemId,
+        quantity: i.quantity,
+        price:
+          i.price ||
+          (typeof i.item === "object" ? i.item.price : 0),
+      };
+    });
+
     const order = await Order.create({
       user: userId,
       customer: {
@@ -69,7 +78,7 @@ export const createOrder = async (req, res) => {
       status: "placed",
     });
 
-    // 🧹 Clear cart safely
+    // 🧹 Clear cart
     await CartItem.deleteMany({ user: userId });
 
     res.status(201).json({
@@ -84,6 +93,7 @@ export const createOrder = async (req, res) => {
     });
   }
 };
+
 
 
 // ================= STRIPE CONFIRM =================
