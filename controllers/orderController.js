@@ -1,56 +1,75 @@
 import Stripe from "stripe";
 import Order from "../modals/order.js";
-import { CartItem } from "../modals/cartItem.js"; // ✅ CORRECT
+import { CartItem } from "../modals/cartItem.js";
 import Restaurant from "../modals/restaurantModel.js";
 import "dotenv/config";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-// ================= CREATE ORDER (CHECKOUT) =================
+// ================= CREATE ORDER =================
 export const createOrder = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { address, paymentMethod } = req.body;
 
-    if (!address || !paymentMethod) {
+    const {
+      firstName,
+      lastName,
+      phone,
+      email,
+      address,
+      city,
+      zipCode,
+      items,
+      subtotal,
+      tax,
+      total,
+      paymentMethod,
+    } = req.body;
+
+    // 🔒 VALIDATION
+    if (
+      !firstName ||
+      !phone ||
+      !address ||
+      !items ||
+      items.length === 0 ||
+      !paymentMethod
+    ) {
       return res.status(400).json({
-        message: "Address and payment method are required",
+        message: "Missing required checkout details",
       });
     }
 
-    // 🛒 Fetch user's cart items
-    const cartItems = await CartItem.find({ user: userId }).populate("item");
-
-    if (!cartItems || cartItems.length === 0) {
-      return res.status(400).json({ message: "Cart is empty" });
-    }
-
-    // 💰 Calculate total amount
-    const totalAmount = cartItems.reduce(
-      (sum, cart) => sum + cart.item.price * cart.quantity,
-      0
-    );
-
-    // 📦 Prepare order items
-    const orderItems = cartItems.map((cart) => ({
-      item: cart.item._id,
-      quantity: cart.quantity,
-      price: cart.item.price,
+    // 📦 Format order items
+    const orderItems = items.map((i) => ({
+      item: i.item._id || i.item,
+      quantity: i.quantity,
+      price: i.price || i.item.price,
     }));
 
     // 📦 Create order
     const order = await Order.create({
       user: userId,
+      customer: {
+        firstName,
+        lastName,
+        phone,
+        email,
+        address,
+        city,
+        zipCode,
+      },
       items: orderItems,
-      address,
+      subtotal,
+      tax,
+      totalAmount: total,
       paymentMethod,
-      totalAmount,
       paymentStatus:
         paymentMethod === "cod" ? "pending" : "initiated",
       status: "placed",
     });
 
-    // 🧹 Clear cart
+    // 🧹 Clear cart safely
     await CartItem.deleteMany({ user: userId });
 
     res.status(201).json({
@@ -58,13 +77,14 @@ export const createOrder = async (req, res) => {
       order,
     });
   } catch (err) {
-    console.error("Create order error:", err);
+    console.error("❌ Create order error:", err);
     res.status(500).json({
       message: "Failed to place order",
       error: err.message,
     });
   }
 };
+
 
 // ================= STRIPE CONFIRM =================
 export const confirmPayment = async (req, res) => {
