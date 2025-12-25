@@ -7,13 +7,11 @@ import "dotenv/config";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // ================= CREATE ORDER =================
+// ================= CREATE ORDER =================
 export const createOrder = async (req, res) => {
   try {
-    // ✅ AUTH CHECK (INSIDE FUNCTION)
     if (!req.user || !req.user._id) {
-      return res.status(401).json({
-        message: "Unauthorized: user not authenticated",
-      });
+      return res.status(401).json({ message: "Unauthorized" });
     }
 
     const userId = req.user._id;
@@ -33,12 +31,16 @@ export const createOrder = async (req, res) => {
       paymentMethod,
     } = req.body;
 
+    // ✅ VALIDATION
     if (
       !firstName ||
+      !lastName ||
       !phone ||
+      !email ||
       !address ||
-      !items ||
-      items.length === 0 ||
+      !city ||
+      !zipCode ||
+      !items?.length ||
       !paymentMethod
     ) {
       return res.status(400).json({
@@ -46,46 +48,42 @@ export const createOrder = async (req, res) => {
       });
     }
 
-    // ✅ SAFE ITEM NORMALIZATION
-    const orderItems = items.map((i) => {
-      const itemId =
-        typeof i.item === "object" ? i.item._id : i.item;
-
-      if (!itemId) {
-        throw new Error("Invalid item in order payload");
-      }
-
-      return {
-        item: itemId,
-        quantity: i.quantity,
-        price:
-          i.price ||
-          (typeof i.item === "object" ? i.item.price : 0),
-      };
-    });
+    // ✅ NORMALIZE ITEMS (schema expects object)
+    const orderItems = items.map((i) => ({
+      item: {
+        name: i.name || "",
+        price: i.price,
+        imageUrl: i.imageUrl || "",
+        restaurantId: i.restaurantId || null,
+      },
+      quantity: i.quantity,
+    }));
 
     const order = await Order.create({
       user: userId,
-      customer: {
-        firstName,
-        lastName,
-        phone,
-        email,
-        address,
-        city,
-        zipCode,
-      },
+
+      // ROOT-LEVEL FIELDS (MATCH SCHEMA)
+      firstName,
+      lastName,
+      phone,
+      email,
+      address,
+      city,
+      zipCode,
+
       items: orderItems,
+
       subtotal,
       tax,
-      totalAmount: total,
+      total,
+
       paymentMethod,
-      paymentStatus:
-        paymentMethod === "cod" ? "pending" : "initiated",
-      status: "placed",
+
+      // ✅ VALID ENUM VALUES
+      paymentStatus: paymentMethod === "cod" ? "pending" : "pending",
+      status: "processing",
     });
 
-    // 🧹 CLEAR USER CART
     await CartItem.deleteMany({ user: userId });
 
     res.status(201).json({
@@ -100,6 +98,7 @@ export const createOrder = async (req, res) => {
     });
   }
 };
+
 
 // ================= STRIPE CONFIRM =================
 export const confirmPayment = async (req, res) => {
