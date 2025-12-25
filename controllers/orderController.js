@@ -1,7 +1,7 @@
 import Stripe from "stripe";
-import Order from "../models/order.js";
-import { CartItem } from "../models/cartItem.js";
-import Restaurant from "../models/restaurantModel.js";
+import Order from "../modals/order.js";
+import { CartItem } from "../modals/cartItem.js";
+import Restaurant from "../modals/restaurantModel.js";
 import "dotenv/config";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -10,9 +10,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 export const createOrder = async (req, res) => {
   try {
     if (!req.user || !req.user._id) {
-      return res.status(401).json({
-        message: "Unauthorized: user not authenticated",
-      });
+      return res.status(401).json({ message: "Unauthorized" });
     }
 
     const userId = req.user._id;
@@ -38,7 +36,10 @@ export const createOrder = async (req, res) => {
       !phone ||
       !email ||
       !address ||
-      !items?.length ||
+      !city ||
+      !zipCode ||
+      !items ||
+      items.length === 0 ||
       !paymentMethod
     ) {
       return res.status(400).json({
@@ -46,36 +47,52 @@ export const createOrder = async (req, res) => {
       });
     }
 
-    // Normalize items to MATCH schema
-    const orderItems = items.map((i) => ({
-      item: {
-        name: i.item.name,
-        price: i.item.price,
-        imageUrl: i.item.imageUrl,
-        restaurantId: i.item.restaurantId,
-      },
-      quantity: i.quantity,
-    }));
+    // ✅ NORMALIZE ITEMS (MATCH SCHEMA)
+    const orderItems = items.map((i) => {
+      if (!i.name || !i.price || !i.quantity) {
+        throw new Error("Invalid item in order payload");
+      }
+
+      return {
+        item: {
+          name: i.name,
+          price: i.price,
+          imageUrl: i.imageUrl || "",
+          restaurantId: i.restaurantId || null,
+        },
+        quantity: i.quantity,
+      };
+    });
 
     const order = await Order.create({
       user: userId,
-      email,
+
+      // customer info (schema-level fields)
       firstName,
       lastName,
       phone,
+      email,
+
+      // address
       address,
       city,
       zipCode,
+
       items: orderItems,
+
       subtotal,
       tax,
       shipping: 0,
       total,
+
       paymentMethod,
-      paymentStatus: paymentMethod === "cod" ? "pending" : "initiated",
+      paymentStatus:
+        paymentMethod === "cod" ? "pending" : "pending",
+
       status: "processing",
     });
 
+    // 🧹 CLEAR CART AFTER ORDER
     await CartItem.deleteMany({ user: userId });
 
     res.status(201).json({
@@ -83,7 +100,7 @@ export const createOrder = async (req, res) => {
       order,
     });
   } catch (err) {
-    console.error("Create order error:", err);
+    console.error("❌ Create order error:", err);
     res.status(500).json({
       message: "Failed to place order",
       error: err.message,
@@ -113,6 +130,7 @@ export const confirmPayment = async (req, res) => {
     }
 
     order.paymentStatus = "succeeded";
+    order.transactionId = session.payment_intent;
     await order.save();
 
     res.json(order);
@@ -140,37 +158,17 @@ export const getOrders = async (req, res) => {
       orders = await Order.find({
         "items.item.restaurantId": restaurant._id,
       }).sort({ createdAt: -1 });
-    } else if (req.user.role === "user") {
-      orders = await Order.find({ user: req.user._id }).sort({
-        createdAt: -1,
-      });
     } else {
-      orders = await Order.find().sort({ createdAt: -1 });
+      orders = await Order.find({
+        user: req.user._id,
+      }).sort({ createdAt: -1 });
     }
 
     res.json(orders);
   } catch (error) {
-    res.status(500).json({ message: "Server Error" });
+    res.status(500).json({
+      message: "Server Error",
+      error: error.message,
+    });
   }
 };
-
-// ================= ADMIN =================
-export const getAllOrders = async (_, res) => {
-  const orders = await Order.find().sort({ createdAt: -1 });
-  res.json(orders);
-};
-
-export const getOrderById = async (req, res) => {
-  const order = await Order.findById(req.params.id);
-  if (!order) return res.status(404).json({ message: "Order not found" });
-  res.json(order);
-};
-
-export const updateOrder = async (req, res) => {
-  const order = await Order.findById(req.params.id);
-  Object.assign(order, req.body);
-  await order.save();
-  res.json(order);
-};
-
-export const updateAnyOrder = updateOrder;

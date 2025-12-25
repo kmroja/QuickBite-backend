@@ -10,33 +10,52 @@ const orderItemSchema = new mongoose.Schema({
       ref: "Restaurant",
     },
   },
-  quantity: { type: Number, required: true },
+  quantity: {
+    type: Number,
+    required: true,
+    min: 1,
+  },
 });
 
 const orderSchema = new mongoose.Schema(
   {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    email: String,
-    firstName: String,
-    lastName: String,
-    phone: String,
-    address: String,
-    city: String,
-    zipCode: String,
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+
+    email: { type: String, required: true },
+    firstName: { type: String, required: true },
+    lastName: { type: String, required: true },
+    phone: { type: String, required: true },
+
+    address: { type: String, required: true },
+    city: { type: String, required: true },
+    zipCode: { type: String, required: true },
+
     items: [orderItemSchema],
+
     paymentMethod: {
       type: String,
-      enum: ["cod", "online", "card", "upi"],
+      enum: ["cod", "online"],
+      required: true,
     },
+
     paymentStatus: {
       type: String,
-      enum: ["pending", "succeeded", "failed", "initiated"],
+      enum: ["pending", "succeeded", "failed"],
       default: "pending",
     },
-    subtotal: Number,
-    tax: Number,
-    shipping: Number,
-    total: Number,
+
+    transactionId: String,
+    sessionId: String,
+
+    subtotal: { type: Number, required: true },
+    tax: { type: Number, required: true },
+    shipping: { type: Number, default: 0 },
+    total: { type: Number, required: true },
+
     status: {
       type: String,
       enum: ["processing", "outForDelivery", "delivered"],
