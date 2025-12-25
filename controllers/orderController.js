@@ -5,6 +5,11 @@ import Restaurant from "../modals/restaurantModel.js";
 import "dotenv/config";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+if (!req.user || !req.user._id) {
+  return res.status(401).json({
+    message: "Unauthorized: user not authenticated",
+  });
+}
 
 // ================= CREATE ORDER =================
 export const createOrder = async (req, res) => {
