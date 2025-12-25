@@ -5,15 +5,17 @@ import Restaurant from "../modals/restaurantModel.js";
 import "dotenv/config";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-if (!req.user || !req.user._id) {
-  return res.status(401).json({
-    message: "Unauthorized: user not authenticated",
-  });
-}
 
 // ================= CREATE ORDER =================
 export const createOrder = async (req, res) => {
   try {
+    // ✅ AUTH CHECK (INSIDE FUNCTION)
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({
+        message: "Unauthorized: user not authenticated",
+      });
+    }
+
     const userId = req.user._id;
 
     const {
@@ -83,7 +85,7 @@ export const createOrder = async (req, res) => {
       status: "placed",
     });
 
-    // 🧹 Clear cart
+    // 🧹 CLEAR USER CART
     await CartItem.deleteMany({ user: userId });
 
     res.status(201).json({
@@ -99,32 +101,42 @@ export const createOrder = async (req, res) => {
   }
 };
 
-
-
 // ================= STRIPE CONFIRM =================
 export const confirmPayment = async (req, res) => {
   try {
     const { session_id } = req.query;
 
-    if (!session_id)
-      return res.status(400).json({ message: "session_id required" });
-
-    const session = await stripe.checkout.sessions.retrieve(session_id);
-
-    if (session.payment_status !== "paid") {
-      return res.status(400).json({ message: "Payment not completed" });
+    if (!session_id) {
+      return res.status(400).json({
+        message: "session_id required",
+      });
     }
 
-    const order = await Order.findOne({ sessionId: session_id });
-    if (!order)
-      return res.status(404).json({ message: "Order not found" });
+    const session =
+      await stripe.checkout.sessions.retrieve(session_id);
+
+    if (session.payment_status !== "paid") {
+      return res
+        .status(400)
+        .json({ message: "Payment not completed" });
+    }
+
+    const order = await Order.findOne({
+      sessionId: session_id,
+    });
+
+    if (!order) {
+      return res
+        .status(404)
+        .json({ message: "Order not found" });
+    }
 
     order.paymentStatus = "succeeded";
     await order.save();
 
     res.json(order);
   } catch (err) {
-    console.error(err);
+    console.error("Stripe confirm error:", err);
     res.status(500).json({
       message: "Server Error",
       error: err.message,
@@ -152,7 +164,9 @@ export const getOrders = async (req, res) => {
         user: req.user._id,
       }).sort({ createdAt: -1 });
     } else {
-      orders = await Order.find().sort({ createdAt: -1 });
+      orders = await Order.find().sort({
+        createdAt: -1,
+      });
     }
 
     res.json(orders);
@@ -168,10 +182,14 @@ export const getOrders = async (req, res) => {
 // ================= GET ALL (ADMIN) =================
 export const getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find().sort({ createdAt: -1 });
+    const orders = await Order.find().sort({
+      createdAt: -1,
+    });
     res.json(orders);
   } catch (error) {
-    res.status(500).json({ message: "Server Error" });
+    res.status(500).json({
+      message: "Server Error",
+    });
   }
 };
 
@@ -179,19 +197,27 @@ export const getAllOrders = async (req, res) => {
 export const getOrderById = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
-    if (!order)
-      return res.status(404).json({ message: "Order not found" });
+
+    if (!order) {
+      return res
+        .status(404)
+        .json({ message: "Order not found" });
+    }
 
     if (
       req.user.role === "user" &&
       !order.user.equals(req.user._id)
     ) {
-      return res.status(403).json({ message: "Access denied" });
+      return res
+        .status(403)
+        .json({ message: "Access denied" });
     }
 
     res.json(order);
   } catch (error) {
-    res.status(500).json({ message: "Server Error" });
+    res.status(500).json({
+      message: "Server Error",
+    });
   }
 };
 
@@ -199,15 +225,21 @@ export const getOrderById = async (req, res) => {
 export const updateOrder = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
-    if (!order)
-      return res.status(404).json({ message: "Order not found" });
+
+    if (!order) {
+      return res
+        .status(404)
+        .json({ message: "Order not found" });
+    }
 
     Object.assign(order, req.body);
     await order.save();
 
     res.json(order);
   } catch (error) {
-    res.status(500).json({ message: "Server Error" });
+    res.status(500).json({
+      message: "Server Error",
+    });
   }
 };
 
@@ -215,14 +247,20 @@ export const updateOrder = async (req, res) => {
 export const updateAnyOrder = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
-    if (!order)
-      return res.status(404).json({ message: "Order not found" });
+
+    if (!order) {
+      return res
+        .status(404)
+        .json({ message: "Order not found" });
+    }
 
     Object.assign(order, req.body);
     await order.save();
 
     res.json(order);
   } catch (error) {
-    res.status(500).json({ message: "Server Error" });
+    res.status(500).json({
+      message: "Server Error",
+    });
   }
 };
