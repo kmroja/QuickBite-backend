@@ -146,10 +146,11 @@ export const confirmPayment = async (req, res) => {
 
     if (!session_id) {
       return res.status(400).json({
-        message: "session_id required",
+        message: "session_id is required",
       });
     }
 
+    // 1️⃣ Get Stripe session
     const session = await stripe.checkout.sessions.retrieve(session_id);
 
     if (session.payment_status !== "paid") {
@@ -158,33 +159,33 @@ export const confirmPayment = async (req, res) => {
       });
     }
 
+    // 2️⃣ Find order using sessionId
     const order = await Order.findOne({ sessionId: session_id });
 
     if (!order) {
       return res.status(404).json({
-        message: "Order not found",
+        message: "Order not found for this session",
       });
     }
 
-    order.paymentStatus = "paid";
+    // 3️⃣ Update order
+    order.paymentStatus = "succeeded";
     order.status = "confirmed";
     await order.save();
 
-    // 🧹 Clear cart after successful payment
-    await CartItem.deleteMany({ user: order.user });
-
-    res.json({
+    res.status(200).json({
       success: true,
       order,
     });
   } catch (err) {
-    console.error("Stripe confirm error:", err);
+    console.error("❌ Stripe confirm error:", err);
     res.status(500).json({
-      message: "Server Error",
+      message: "Payment confirmation failed",
       error: err.message,
     });
   }
 };
+
 
 // ================= GET ORDERS =================
 export const getOrders = async (req, res) => {
