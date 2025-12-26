@@ -7,9 +7,9 @@ import "dotenv/config";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // ================= CREATE ORDER =================
-// ================= CREATE ORDER =================
 export const createOrder = async (req, res) => {
   try {
+    // 🔐 Auth check
     if (!req.user || !req.user._id) {
       return res.status(401).json({ message: "Unauthorized" });
     }
@@ -31,7 +31,7 @@ export const createOrder = async (req, res) => {
       paymentMethod,
     } = req.body;
 
-    // ✅ VALIDATION
+    // ✅ Validation
     if (
       !firstName ||
       !lastName ||
@@ -48,10 +48,10 @@ export const createOrder = async (req, res) => {
       });
     }
 
-    // ✅ NORMALIZE ITEMS (schema expects object)
+    // ✅ Normalize items for DB
     const orderItems = items.map((i) => ({
       item: {
-        name: i.name || "",
+        name: i.name || "Food Item",
         price: i.price,
         imageUrl: i.imageUrl || "",
         restaurantId: i.restaurantId || null,
@@ -59,10 +59,54 @@ export const createOrder = async (req, res) => {
       quantity: i.quantity,
     }));
 
+    // ================= ONLINE PAYMENT =================
+    if (paymentMethod === "online") {
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        mode: "payment",
+        customer_email: email,
+        line_items: items.map((i) => ({
+          price_data: {
+            currency: "inr",
+            product_data: {
+              name: i.name || "Food Item",
+            },
+            unit_amount: Math.round(i.price * 100),
+          },
+          quantity: i.quantity,
+        })),
+        success_url: `${process.env.FRONTEND_URL}/checkout?payment_status=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.FRONTEND_URL}/checkout?payment_status=cancel`,
+      });
+
+      const order = await Order.create({
+        user: userId,
+        firstName,
+        lastName,
+        phone,
+        email,
+        address,
+        city,
+        zipCode,
+        items: orderItems,
+        subtotal,
+        tax,
+        total,
+        paymentMethod,
+        paymentStatus: "pending",
+        status: "processing",
+        sessionId: session.id,
+      });
+
+      // ❌ DO NOT clear cart yet (payment not done)
+      return res.status(200).json({
+        url: session.url, // ✅ FRONTEND REDIRECT
+      });
+    }
+
+    // ================= CASH ON DELIVERY =================
     const order = await Order.create({
       user: userId,
-
-      // ROOT-LEVEL FIELDS (MATCH SCHEMA)
       firstName,
       lastName,
       phone,
@@ -70,20 +114,16 @@ export const createOrder = async (req, res) => {
       address,
       city,
       zipCode,
-
       items: orderItems,
-
       subtotal,
       tax,
       total,
-
       paymentMethod,
-
-      // ✅ VALID ENUM VALUES
-      paymentStatus: paymentMethod === "cod" ? "pending" : "pending",
+      paymentStatus: "pending",
       status: "processing",
     });
 
+    // 🧹 Clear cart immediately for COD
     await CartItem.deleteMany({ user: userId });
 
     res.status(201).json({
@@ -99,7 +139,6 @@ export const createOrder = async (req, res) => {
   }
 };
 
-
 // ================= STRIPE CONFIRM =================
 export const confirmPayment = async (req, res) => {
   try {
@@ -111,29 +150,33 @@ export const confirmPayment = async (req, res) => {
       });
     }
 
-    const session =
-      await stripe.checkout.sessions.retrieve(session_id);
+    const session = await stripe.checkout.sessions.retrieve(session_id);
 
     if (session.payment_status !== "paid") {
-      return res
-        .status(400)
-        .json({ message: "Payment not completed" });
+      return res.status(400).json({
+        message: "Payment not completed",
+      });
     }
 
-    const order = await Order.findOne({
-      sessionId: session_id,
-    });
+    const order = await Order.findOne({ sessionId: session_id });
 
     if (!order) {
-      return res
-        .status(404)
-        .json({ message: "Order not found" });
+      return res.status(404).json({
+        message: "Order not found",
+      });
     }
 
-    order.paymentStatus = "succeeded";
+    order.paymentStatus = "paid";
+    order.status = "confirmed";
     await order.save();
 
-    res.json(order);
+    // 🧹 Clear cart after successful payment
+    await CartItem.deleteMany({ user: order.user });
+
+    res.json({
+      success: true,
+      order,
+    });
   } catch (err) {
     console.error("Stripe confirm error:", err);
     res.status(500).json({
@@ -156,24 +199,18 @@ export const getOrders = async (req, res) => {
       if (!restaurant) return res.json([]);
 
       orders = await Order.find({
-        "items.item": { $in: restaurant.menu },
+        "items.item.restaurantId": restaurant._id,
       }).sort({ createdAt: -1 });
-    } else if (req.user.role === "user") {
+    } else {
       orders = await Order.find({
         user: req.user._id,
       }).sort({ createdAt: -1 });
-    } else {
-      orders = await Order.find().sort({
-        createdAt: -1,
-      });
     }
 
     res.json(orders);
   } catch (error) {
-    console.error("getOrders error:", error);
     res.status(500).json({
       message: "Server Error",
-      error: error.message,
     });
   }
 };
@@ -181,14 +218,10 @@ export const getOrders = async (req, res) => {
 // ================= GET ALL (ADMIN) =================
 export const getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find().sort({
-      createdAt: -1,
-    });
+    const orders = await Order.find().sort({ createdAt: -1 });
     res.json(orders);
-  } catch (error) {
-    res.status(500).json({
-      message: "Server Error",
-    });
+  } catch {
+    res.status(500).json({ message: "Server Error" });
   }
 };
 
@@ -198,25 +231,19 @@ export const getOrderById = async (req, res) => {
     const order = await Order.findById(req.params.id);
 
     if (!order) {
-      return res
-        .status(404)
-        .json({ message: "Order not found" });
+      return res.status(404).json({ message: "Order not found" });
     }
 
     if (
       req.user.role === "user" &&
       !order.user.equals(req.user._id)
     ) {
-      return res
-        .status(403)
-        .json({ message: "Access denied" });
+      return res.status(403).json({ message: "Access denied" });
     }
 
     res.json(order);
-  } catch (error) {
-    res.status(500).json({
-      message: "Server Error",
-    });
+  } catch {
+    res.status(500).json({ message: "Server Error" });
   }
 };
 
@@ -224,21 +251,16 @@ export const getOrderById = async (req, res) => {
 export const updateOrder = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
-
     if (!order) {
-      return res
-        .status(404)
-        .json({ message: "Order not found" });
+      return res.status(404).json({ message: "Order not found" });
     }
 
     Object.assign(order, req.body);
     await order.save();
 
     res.json(order);
-  } catch (error) {
-    res.status(500).json({
-      message: "Server Error",
-    });
+  } catch {
+    res.status(500).json({ message: "Server Error" });
   }
 };
 
@@ -246,20 +268,15 @@ export const updateOrder = async (req, res) => {
 export const updateAnyOrder = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
-
     if (!order) {
-      return res
-        .status(404)
-        .json({ message: "Order not found" });
+      return res.status(404).json({ message: "Order not found" });
     }
 
     Object.assign(order, req.body);
     await order.save();
 
     res.json(order);
-  } catch (error) {
-    res.status(500).json({
-      message: "Server Error",
-    });
+  } catch {
+    res.status(500).json({ message: "Server Error" });
   }
 };
