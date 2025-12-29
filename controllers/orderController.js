@@ -120,7 +120,8 @@ export const createOrder = async (req, res) => {
       total,
       paymentMethod,
       paymentStatus: "pending",
-      status: "processing",
+      status: "pending"
+,
     });
 
     // 🧹 Clear cart immediately for COD
@@ -169,7 +170,8 @@ export const confirmPayment = async (req, res) => {
     }
 
     // 3️⃣ Update order
-order.paymentStatus = "paid";
+order.paymentStatus = "succeeded";
+
 order.status = "confirmed";
 order.isPaid = true;
     await order.save();
