@@ -24,13 +24,18 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 /* =======================
-   PUBLIC ROUTES
+   🌍 PUBLIC ROUTES
 ======================= */
-// 🌍 Customer menu view
+
+// 🔥 ALL ITEMS (Home / Special Offers)
+// ✅ THIS FIXES YOUR 401 ERROR
+itemRouter.get("/", getItems);
+
+// 🍽 Items by restaurant (menu page)
 itemRouter.get("/restaurant/:id", getItemsByRestaurant);
 
 /* =======================
-   PROTECTED ROUTES
+   🔐 PROTECTED ROUTES
 ======================= */
 itemRouter.use(authMiddleware(["admin", "restaurant"]));
 
