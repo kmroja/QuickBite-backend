@@ -169,8 +169,9 @@ export const confirmPayment = async (req, res) => {
     }
 
     // 3️⃣ Update order
-    order.paymentStatus = "succeeded";
-    order.status = "confirmed";
+order.paymentStatus = "paid";
+order.status = "confirmed";
+order.isPaid = true;
     await order.save();
 
     res.status(200).json({
