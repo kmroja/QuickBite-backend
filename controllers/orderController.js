@@ -9,7 +9,6 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 // ================= CREATE ORDER =================
 export const createOrder = async (req, res) => {
   try {
-    // 🔐 Auth check
     if (!req.user || !req.user._id) {
       return res.status(401).json({ message: "Unauthorized" });
     }
@@ -31,7 +30,6 @@ export const createOrder = async (req, res) => {
       paymentMethod,
     } = req.body;
 
-    // ✅ Validation
     if (
       !firstName ||
       !lastName ||
@@ -48,7 +46,6 @@ export const createOrder = async (req, res) => {
       });
     }
 
-    // ✅ Normalize items for DB
     const orderItems = items.map((i) => ({
       item: {
         name: i.name || "Food Item",
@@ -79,7 +76,7 @@ export const createOrder = async (req, res) => {
         cancel_url: `${process.env.FRONTEND_URL}/checkout?payment_status=cancel`,
       });
 
-      const order = await Order.create({
+      await Order.create({
         user: userId,
         firstName,
         lastName,
@@ -94,13 +91,12 @@ export const createOrder = async (req, res) => {
         total,
         paymentMethod,
         paymentStatus: "pending",
-        status: "processing",
+        status: "pending", // ✅ FIXED
         sessionId: session.id,
       });
 
-      // ❌ DO NOT clear cart yet (payment not done)
       return res.status(200).json({
-        url: session.url, // ✅ FRONTEND REDIRECT
+        url: session.url,
       });
     }
 
@@ -120,11 +116,9 @@ export const createOrder = async (req, res) => {
       total,
       paymentMethod,
       paymentStatus: "pending",
-      status: "pending"
-,
+      status: "pending",
     });
 
-    // 🧹 Clear cart immediately for COD
     await CartItem.deleteMany({ user: userId });
 
     res.status(201).json({
@@ -151,7 +145,6 @@ export const confirmPayment = async (req, res) => {
       });
     }
 
-    // 1️⃣ Get Stripe session
     const session = await stripe.checkout.sessions.retrieve(session_id);
 
     if (session.payment_status !== "paid") {
@@ -160,7 +153,6 @@ export const confirmPayment = async (req, res) => {
       });
     }
 
-    // 2️⃣ Find order using sessionId
     const order = await Order.findOne({ sessionId: session_id });
 
     if (!order) {
@@ -169,11 +161,8 @@ export const confirmPayment = async (req, res) => {
       });
     }
 
-    // 3️⃣ Update order
-order.paymentStatus = "succeeded";
-
-order.status = "confirmed";
-order.isPaid = true;
+    order.paymentStatus = "succeeded";
+    order.status = "confirmed";
     await order.save();
 
     res.status(200).json({
@@ -188,6 +177,7 @@ order.isPaid = true;
     });
   }
 };
+
 
 
 // ================= GET ORDERS =================
