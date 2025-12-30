@@ -273,4 +273,25 @@ export const updateAnyOrder = async (req, res) => {
   } catch {
     res.status(500).json({ message: "Server Error" });
   }
+};export const getOrdersByRestaurant = async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+
+    const orders = await Order.find({ restaurant: restaurantId })
+      .populate("user", "name email")
+      .populate("items.item", "name price image")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      orders,
+    });
+  } catch (error) {
+    console.error("Restaurant order error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch restaurant orders",
+    });
+  }
 };
+

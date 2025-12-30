@@ -7,13 +7,14 @@ import {
   getOrderById,
   updateOrder,
   updateAnyOrder,
+  getOrdersByRestaurant, // ✅ ADD
 } from "../controllers/orderController.js";
 
 import authMiddleware from "../middleware/auth.js";
 
 const orderRouter = express.Router();
 
-// ================= ADMIN =================
+/* ================= ADMIN ================= */
 orderRouter.get(
   "/getall",
   authMiddleware(["admin"]),
@@ -26,14 +27,21 @@ orderRouter.put(
   updateAnyOrder
 );
 
-// ================= USER CHECKOUT =================
+/* ================= RESTAURANT ================= */
+orderRouter.get(
+  "/restaurant/:restaurantId",
+  authMiddleware(["restaurant", "admin"]),
+  getOrdersByRestaurant
+);
+
+/* ================= USER CHECKOUT ================= */
 orderRouter.post(
   "/",
-  authMiddleware(["user"]), // ✅ FIXED
+  authMiddleware(["user"]),
   createOrder
 );
 
-// ================= USER ORDERS =================
+/* ================= USER / COMMON ================= */
 orderRouter.get(
   "/",
   authMiddleware(["user", "restaurant", "admin"]),
