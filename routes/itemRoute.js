@@ -1,7 +1,8 @@
 // routes/itemRoute.js
 import express from "express";
-import multer from "multer";
 import authMiddleware from "../middleware/auth.js";
+import upload from "../middleware/cloudinaryUpload.js";
+
 import {
   createItem,
   getItems,
@@ -9,28 +10,14 @@ import {
   updateItem,
   deleteItem,
 } from "../controllers/itemController.js";
-import upload from "../middleware/cloudinaryUpload.js";
+
 const itemRouter = express.Router();
-
-/* =======================
-   MULTER CONFIG
-======================= */
-// const storage = multer.diskStorage({
-//   destination: (_req, _file, cb) => cb(null, "uploads/"),
-//   filename: (_req, file, cb) =>
-//     cb(null, `${Date.now()}-${file.originalname}`),
-// });
-
-const upload = multer({ dest: "temp/" });
 
 /* =======================
    🌍 PUBLIC ROUTES
 ======================= */
 
-itemRouter.post("/", upload.single("image"), createItem);
-itemRouter.put("/:id", upload.single("image"), updateItem);
-// 🔥 ALL ITEMS (Home / Special Offers)
-// ✅ THIS FIXES YOUR 401 ERROR
+// 🔥 All items (Home / Special Menu)
 itemRouter.get("/", getItems);
 
 // 🍽 Items by restaurant (menu page)
@@ -41,10 +28,10 @@ itemRouter.get("/restaurant/:id", getItemsByRestaurant);
 ======================= */
 itemRouter.use(authMiddleware(["admin", "restaurant"]));
 
-// 🏪 Restaurant/Admin dashboard
+// 🏪 Dashboard items
 itemRouter.get("/my-items", getItems);
 
-// ➕ Add item
+// ➕ Add item (Cloudinary image upload)
 itemRouter.post("/", upload.single("image"), createItem);
 
 // ✏️ Update item
