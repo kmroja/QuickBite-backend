@@ -273,13 +273,15 @@ export const updateAnyOrder = async (req, res) => {
   } catch {
     res.status(500).json({ message: "Server Error" });
   }
-};export const getOrdersByRestaurant = async (req, res) => {
+};
+export const getOrdersByRestaurant = async (req, res) => {
   try {
     const { restaurantId } = req.params;
 
-    const orders = await Order.find({ restaurant: restaurantId })
-      .populate("user", "name email")
-      .populate("items.item", "name price image")
+    const orders = await Order.find({
+      "items.item.restaurantId": restaurantId, // ✅ CORRECT
+    })
+      .populate("user", "name email phone")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -294,4 +296,5 @@ export const updateAnyOrder = async (req, res) => {
     });
   }
 };
+
 
