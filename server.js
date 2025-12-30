@@ -15,17 +15,18 @@ import reviewRoutes from "./routes/reviewRoutes.js";
 import foodReviewRoutes from "./routes/foodReviewRoutes.js";
 import restaurantRouter from "./routes/restaurantRoute.js";
 import restaurantApplicationRouter from "./routes/restaurantApplicationRoute.js";
+
 const app = express();
 const port = process.env.PORT || 4000;
 
-// ✅ Resolve directory for static path
+// ✅ Resolve directory (ESM safe)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // ✅ Connect MongoDB
 connectDB();
 
-// ✅ CORS Configuration
+// ✅ CORS
 const allowedOrigins = [
   "https://quickbite-frontendapp.netlify.app",
   "https://quickbite-adminapp.netlify.app",
@@ -34,7 +35,7 @@ const allowedOrigins = [
 
 app.use(
   cors({
-    origin: function (origin, callback) {
+    origin: (origin, callback) => {
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -42,17 +43,15 @@ app.use(
         callback(new Error("Not allowed by CORS"));
       }
     },
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
     credentials: true,
   })
 );
 
-// ✅ Middleware
+// ✅ Body Parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ✅ Serve Uploaded Files Publicly (for restaurant images)
+// ✅ SERVE UPLOADS (ONLY ONCE)
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // ✅ API Routes
@@ -65,20 +64,19 @@ app.use("/api/reviews", reviewRoutes);
 app.use("/api/food-review", foodReviewRoutes);
 app.use("/api/restaurants", restaurantRouter);
 app.use("/api/restaurant-applications", restaurantApplicationRouter);
-app.use("/uploads", express.static("uploads"));
 
-// ✅ Health Check Route
+// ✅ Health
 app.get("/", (req, res) => {
   res.send("✅ QuickBite API is running successfully.");
 });
 
-// ✅ Error Handling (optional but recommended)
+// ✅ Global Error Handler
 app.use((err, req, res, next) => {
-  console.error("🔥 Global Error:", err.message);
-  res.status(500).json({ success: false, message: "Internal Server Error" });
+  console.error("🔥 Error:", err.message);
+  res.status(500).json({ success: false, message: err.message });
 });
 
-// ✅ Start Server
+// ✅ Start
 app.listen(port, () => {
-  console.log(`🚀 Server running at http://localhost:${port}`);
+  console.log(`🚀 Server running on port ${port}`);
 });
