@@ -9,7 +9,7 @@ import {
   updateItem,
   deleteItem,
 } from "../controllers/itemController.js";
-
+import upload from "../middleware/cloudinaryUpload.js";
 const itemRouter = express.Router();
 
 /* =======================
@@ -27,6 +27,8 @@ const upload = multer({ dest: "temp/" });
    🌍 PUBLIC ROUTES
 ======================= */
 
+itemRouter.post("/", upload.single("image"), createItem);
+itemRouter.put("/:id", upload.single("image"), updateItem);
 // 🔥 ALL ITEMS (Home / Special Offers)
 // ✅ THIS FIXES YOUR 401 ERROR
 itemRouter.get("/", getItems);

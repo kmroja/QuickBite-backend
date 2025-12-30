@@ -147,9 +147,10 @@ export const updateItem = async (req, res) => {
     item.price = req.body.price || item.price;
     item.category = req.body.category || item.category;
 
-    if (req.file) {
-      item.imageUrl = `/uploads/${req.file.filename}`;
-    }
+  if (req.file) {
+  item.imageUrl = req.file.path; // ✅ Cloudinary URL
+}
+
 
     await item.save();
     res.json({ success: true, item });
