@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Item from "../modals/item.js";
 import Restaurant from "../modals/restaurantModel.js";
+import cloudinary from "../config/cloudinary.js";
 
 // ⭐ CREATE ITEM
 export const createItem = async (req, res) => {
@@ -8,9 +9,7 @@ export const createItem = async (req, res) => {
     const { name, description, price, category } = req.body;
 
     if (!name || !price || !category) {
-      return res.status(400).json({
-        message: "name, price and category are required",
-      });
+      return res.status(400).json({ message: "Required fields missing" });
     }
 
     let restaurantId;
@@ -18,7 +17,7 @@ export const createItem = async (req, res) => {
     if (req.user.role === "restaurant") {
       const restaurant = await Restaurant.findOne({ owner: req.user._id });
       if (!restaurant) {
-        return res.status(400).json({ message: "No restaurant linked to this account" });
+        return res.status(400).json({ message: "No restaurant linked" });
       }
       restaurantId = restaurant._id;
     }
@@ -30,13 +29,21 @@ export const createItem = async (req, res) => {
       restaurantId = req.body.restaurantId;
     }
 
+    let imageUrl = "";
+    if (req.file) {
+      const upload = await cloudinary.uploader.upload(req.file.path, {
+        folder: "quickbite/items",
+      });
+      imageUrl = upload.secure_url;
+    }
+
     const newItem = await Item.create({
       name,
       description,
       price,
       category,
       restaurant: restaurantId,
-      imageUrl: req.file ? req.file.filename : "",
+      imageUrl,
     });
 
     await Restaurant.findByIdAndUpdate(restaurantId, {
@@ -45,9 +52,11 @@ export const createItem = async (req, res) => {
 
     res.status(201).json({ success: true, item: newItem });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: "Failed to create item" });
   }
 };
+
 
 // ⭐ GET ITEMS (PUBLIC + DASHBOARD FIXED)
 export const getItems = async (req, res) => {

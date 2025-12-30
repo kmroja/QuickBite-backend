@@ -2,42 +2,41 @@ import Restaurant from "../modals/restaurantModel.js";
 import path from "path";
 import fs from "fs";
 import User from "../modals/userModel.js";
-
+import cloudinary from "../config/cloudinary.js";
 // ✅ Helper: Build full image URL
-const getFullImageUrl = (req, filename) => {
-  const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get("host")}`;
-  return `${baseUrl}/uploads/${filename}`;
-};
-
-// ✅ Create new restaurant
 export const createRestaurant = async (req, res) => {
   try {
-    const { name, description, address, phone, cuisine, rating, reviews } = req.body;
+    const { name, description, address, phone, cuisine } = req.body;
 
-    if (!name || !address)
-      return res.status(400).json({ success: false, message: "Name and address are required" });
+    if (!name || !address) {
+      return res.status(400).json({ message: "Required fields missing" });
+    }
 
-    const image = req.file ? getFullImageUrl(req, req.file.filename) : null;
+    let imageUrl = "";
+    if (req.file) {
+      const upload = await cloudinary.uploader.upload(req.file.path, {
+        folder: "quickbite/restaurants",
+      });
+      imageUrl = upload.secure_url;
+    }
 
-    const restaurantData = {
+    const restaurant = await Restaurant.create({
       name,
       description,
       address,
       phone,
       cuisine,
-      rating,
-      reviews,
-      image,
-      owner: req.user?._id || null,
-    };
+      imageUrl,
+      owner: req.user._id,
+    });
 
-    const restaurant = await Restaurant.create(restaurantData);
     res.status(201).json({ success: true, restaurant });
   } catch (err) {
-    console.error("Error creating restaurant:", err);
-    res.status(500).json({ success: false, message: "Server error while creating restaurant" });
+    res.status(500).json({ message: "Failed to create restaurant" });
   }
 };
+
+
 
 // ✅ Get all restaurants (Public)
 export const getAllRestaurants = async (req, res) => {

@@ -15,13 +15,13 @@ const itemRouter = express.Router();
 /* =======================
    MULTER CONFIG
 ======================= */
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, "uploads/"),
-  filename: (_req, file, cb) =>
-    cb(null, `${Date.now()}-${file.originalname}`),
-});
+// const storage = multer.diskStorage({
+//   destination: (_req, _file, cb) => cb(null, "uploads/"),
+//   filename: (_req, file, cb) =>
+//     cb(null, `${Date.now()}-${file.originalname}`),
+// });
 
-const upload = multer({ storage });
+const upload = multer({ dest: "temp/" });
 
 /* =======================
    🌍 PUBLIC ROUTES
