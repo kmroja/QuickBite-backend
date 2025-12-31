@@ -276,15 +276,18 @@ export const updateAnyOrder = async (req, res) => {
 };
 export const getOrdersByRestaurant = async (req, res) => {
   try {
-    const restaurantId = new mongoose.Types.ObjectId(req.params.restaurantId);
+    const { restaurantId } = req.params;
 
     const orders = await Order.find({
-      "items.item.restaurantId": restaurantId,
+      "items.item.restaurantId": restaurantId, // ✅ CORRECT
     })
       .populate("user", "name email phone")
       .sort({ createdAt: -1 });
 
-    res.status(200).json({ success: true, orders });
+    res.status(200).json({
+      success: true,
+      orders,
+    });
   } catch (error) {
     console.error("Restaurant order error:", error);
     res.status(500).json({
