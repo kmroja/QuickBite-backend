@@ -277,22 +277,34 @@ export const updateAnyOrder = async (req, res) => {
 };
 export const getOrdersByRestaurant = async (req, res) => {
   try {
-    // 🔥 restaurant id comes from logged-in user
-    const restaurantId = req.user._id;
+    // restaurant user id
+    const restaurantUserId = req.user._id;
+
+    // find restaurant owned by this user
+    const restaurant = await Restaurant.findOne({
+      owner: restaurantUserId,
+    });
+
+    if (!restaurant) {
+      return res.status(404).json({
+        message: "Restaurant not found for this user",
+      });
+    }
 
     const orders = await Order.find({
-      "items.restaurant": restaurantId,
+      "items.item.restaurantId": restaurant._id,
     }).sort({ createdAt: -1 });
 
     res.status(200).json(orders);
   } catch (error) {
-    console.error("Restaurant orders error:", error);
+    console.error("❌ Restaurant orders error:", error);
     res.status(500).json({
       message: "Failed to fetch restaurant orders",
       error: error.message,
     });
   }
 };
+
 
 
 
