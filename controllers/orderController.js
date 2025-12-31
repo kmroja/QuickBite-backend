@@ -3,6 +3,7 @@ import Order from "../modals/order.js";
 import { CartItem } from "../modals/cartItem.js";
 import Restaurant from "../modals/restaurantModel.js";
 import "dotenv/config";
+import mongoose from "mongoose";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
