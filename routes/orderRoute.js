@@ -29,10 +29,11 @@ orderRouter.put(
 
 /* ================= RESTAURANT ================= */
 orderRouter.get(
-  "/restaurant/:restaurantId",
+  "/restaurant",
   authMiddleware(["restaurant", "admin"]),
   getOrdersByRestaurant
 );
+
 
 /* ================= USER CHECKOUT ================= */
 orderRouter.post(

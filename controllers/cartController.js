@@ -24,9 +24,9 @@ export const getCart = asyncHandler(async (req, res) => {
 export const addToCart = asyncHandler(async (req, res) => {
   const { itemId, quantity } = req.body;
 
-  if (!itemId || typeof quantity !== 'number') {
+  if (!itemId || typeof quantity !== "number") {
     return res.status(400).json({
-      message: 'itemId and quantity are required',
+      message: "itemId and quantity are required",
     });
   }
 
@@ -46,14 +46,27 @@ export const addToCart = asyncHandler(async (req, res) => {
     });
   }
 
-  await cartItem.populate('item');
+  // 🔥 POPULATE ITEM WITH RESTAURANT
+  await cartItem.populate({
+    path: "item",
+    select: "name price imageUrl restaurant",
+  });
 
   res.status(200).json({
     _id: cartItem._id,
-    item: cartItem.item,
     quantity: cartItem.quantity,
+
+    // 🔥 SEND FULL DATA
+    item: {
+      _id: cartItem.item._id,
+      name: cartItem.item.name,
+      price: cartItem.item.price,
+      imageUrl: cartItem.item.imageUrl,
+      restaurantId: cartItem.item.restaurant, // ✅ KEY FIX
+    },
   });
 });
+
 
 
 // ----------------------------
