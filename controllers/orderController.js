@@ -51,7 +51,7 @@ export const createOrder = async (req, res) => {
         name: i.name || "Food Item",
         price: i.price,
         imageUrl: i.imageUrl || "",
-        restaurantId: i.restaurantId || null,
+        restaurantId: new mongoose.Types.ObjectId(i.restaurantId),
       },
       quantity: i.quantity,
     }));
