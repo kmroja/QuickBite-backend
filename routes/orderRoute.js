@@ -7,7 +7,7 @@ import {
   getOrderById,
   updateOrder,
   updateAnyOrder,
-  getOrdersByRestaurant, // ✅ ADD
+  getOrdersByRestaurant,
 } from "../controllers/orderController.js";
 
 import authMiddleware from "../middleware/auth.js";
@@ -33,7 +33,6 @@ orderRouter.get(
   authMiddleware(["restaurant", "admin"]),
   getOrdersByRestaurant
 );
-
 
 /* ================= USER CHECKOUT ================= */
 orderRouter.post(
