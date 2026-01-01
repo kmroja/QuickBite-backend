@@ -42,7 +42,7 @@ router.put("/approve/:id", authMiddleware(["admin"]), approveRestaurant);
 // ======================================================
 router.get(
   "/owner/:ownerId",
-  authMiddleware(["user","restaurant", "admin"]),
+  authMiddleware(["restaurant", "admin"]),
   getRestaurantByOwner
 );
 
