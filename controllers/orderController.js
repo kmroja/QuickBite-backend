@@ -47,12 +47,17 @@ export const createOrder = async (req, res) => {
       });
     }
 
+    // 🔥 GET RESTAURANT ID FROM FIRST ITEM (SAFE – SINGLE RESTAURANT CART)
+    const restaurantId = new mongoose.Types.ObjectId(
+      items[0].restaurantId
+    );
+
+    // ❌ REMOVE restaurantId from item level
     const orderItems = items.map((i) => ({
       item: {
         name: i.name || "Food Item",
         price: i.price,
         imageUrl: i.imageUrl || "",
-        restaurantId: new mongoose.Types.ObjectId(i.restaurantId),
       },
       quantity: i.quantity,
     }));
@@ -79,6 +84,7 @@ export const createOrder = async (req, res) => {
 
       await Order.create({
         user: userId,
+        restaurant: restaurantId, // ✅ MAIN LINK
         firstName,
         lastName,
         phone,
@@ -92,18 +98,17 @@ export const createOrder = async (req, res) => {
         total,
         paymentMethod,
         paymentStatus: "pending",
-        status: "pending", // ✅ FIXED
+        status: "pending",
         sessionId: session.id,
       });
 
-      return res.status(200).json({
-        url: session.url,
-      });
+      return res.status(200).json({ url: session.url });
     }
 
     // ================= CASH ON DELIVERY =================
     const order = await Order.create({
       user: userId,
+      restaurant: restaurantId, // ✅ MAIN LINK
       firstName,
       lastName,
       phone,
@@ -134,6 +139,7 @@ export const createOrder = async (req, res) => {
     });
   }
 };
+
 
 // ================= STRIPE CONFIRM =================
 export const confirmPayment = async (req, res) => {
@@ -194,7 +200,7 @@ export const getOrders = async (req, res) => {
       if (!restaurant) return res.json([]);
 
       orders = await Order.find({
-        "items.item.restaurantId": restaurant._id,
+        restaurant: restaurant._id,
       }).sort({ createdAt: -1 });
     } else {
       orders = await Order.find({
@@ -204,11 +210,10 @@ export const getOrders = async (req, res) => {
 
     res.json(orders);
   } catch (error) {
-    res.status(500).json({
-      message: "Server Error",
-    });
+    res.status(500).json({ message: "Server Error" });
   }
 };
+
 
 // ================= GET ALL (ADMIN) =================
 export const getAllOrders = async (req, res) => {
@@ -277,12 +282,8 @@ export const updateAnyOrder = async (req, res) => {
 };
 export const getOrdersByRestaurant = async (req, res) => {
   try {
-    // restaurant user id
-    const restaurantUserId = req.user._id;
-
-    // find restaurant owned by this user
     const restaurant = await Restaurant.findOne({
-      owner: restaurantUserId,
+      owner: req.user._id,
     });
 
     if (!restaurant) {
@@ -292,7 +293,7 @@ export const getOrdersByRestaurant = async (req, res) => {
     }
 
     const orders = await Order.find({
-      "items.item.restaurantId": restaurant._id,
+      restaurant: restaurant._id,
     }).sort({ createdAt: -1 });
 
     res.status(200).json(orders);
@@ -304,6 +305,7 @@ export const getOrdersByRestaurant = async (req, res) => {
     });
   }
 };
+
 
 
 
