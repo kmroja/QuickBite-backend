@@ -54,14 +54,17 @@ export const createOrder = async (req, res) => {
 
 
     // ❌ REMOVE restaurantId from item level
-   const orderItems = items.map((i) => ({
+const orderItems = items.map((i) => ({
   item: {
     name: i.item.name,
     price: Number(i.item.price),
     imageUrl: i.item.imageUrl || "",
+    restaurantId: i.item.restaurantId, // ✅ REQUIRED
   },
   quantity: Number(i.quantity),
 }));
+
+
 
 
     // ================= ONLINE PAYMENT =================
