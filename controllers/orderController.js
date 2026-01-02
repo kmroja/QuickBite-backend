@@ -48,19 +48,21 @@ export const createOrder = async (req, res) => {
     }
 
     // 🔥 GET RESTAURANT ID FROM FIRST ITEM (SAFE – SINGLE RESTAURANT CART)
-    const restaurantId = new mongoose.Types.ObjectId(
-      items[0].restaurantId
-    );
+   const restaurantId = new mongoose.Types.ObjectId(
+  items[0].item.restaurantId
+);
+
 
     // ❌ REMOVE restaurantId from item level
-    const orderItems = items.map((i) => ({
-      item: {
-        name: i.name || "Food Item",
-        price: i.price,
-        imageUrl: i.imageUrl || "",
-      },
-      quantity: i.quantity,
-    }));
+   const orderItems = items.map((i) => ({
+  item: {
+    name: i.item.name,
+    price: Number(i.item.price),
+    imageUrl: i.item.imageUrl || "",
+  },
+  quantity: Number(i.quantity),
+}));
+
 
     // ================= ONLINE PAYMENT =================
     if (paymentMethod === "online") {
@@ -68,16 +70,17 @@ export const createOrder = async (req, res) => {
         payment_method_types: ["card"],
         mode: "payment",
         customer_email: email,
-        line_items: items.map((i) => ({
-          price_data: {
-            currency: "inr",
-            product_data: {
-              name: i.name || "Food Item",
-            },
-            unit_amount: Math.round(i.price * 100),
-          },
-          quantity: i.quantity,
-        })),
+      line_items: items.map((i) => ({
+  price_data: {
+    currency: "inr",
+    product_data: {
+      name: i.item.name,
+    },
+    unit_amount: Math.round(Number(i.item.price) * 100),
+  },
+  quantity: Number(i.quantity),
+}))
+,
         success_url: `${process.env.FRONTEND_URL}/checkout?payment_status=success&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${process.env.FRONTEND_URL}/checkout?payment_status=cancel`,
       });
