@@ -4,6 +4,7 @@ import { CartItem } from "../modals/cartItem.js";
 import Restaurant from "../modals/restaurantModel.js";
 import "dotenv/config";
 import mongoose from "mongoose";
+import Item from "../modals/item.js"; // menu item model
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -48,9 +49,18 @@ export const createOrder = async (req, res) => {
     }
 
     // 🔥 GET RESTAURANT ID FROM FIRST ITEM (SAFE – SINGLE RESTAURANT CART)
-   const restaurantId = new mongoose.Types.ObjectId(
-  items[0].item.restaurantId
-);
+// 🔥 GET RESTAURANT FROM DB (SOURCE OF TRUTH)
+const firstItemId = items[0].item._id;
+
+const menuItem = await Item.findById(firstItemId).select("restaurant");
+
+if (!menuItem || !menuItem.restaurant) {
+  return res.status(400).json({
+    message: "Invalid menu item / restaurant not found",
+  });
+}
+
+const restaurantId = menuItem.restaurant;
 
 
     // ❌ REMOVE restaurantId from item level
@@ -59,7 +69,7 @@ const orderItems = items.map((i) => ({
     name: i.item.name,
     price: Number(i.item.price),
     imageUrl: i.item.imageUrl || "",
-    restaurantId: i.item.restaurantId, // ✅ REQUIRED
+    
   },
   quantity: Number(i.quantity),
 }));
@@ -288,7 +298,6 @@ export const updateAnyOrder = async (req, res) => {
 };
 export const getOrdersByRestaurant = async (req, res) => {
   try {
-    // req.user is restaurant owner
     const restaurant = await Restaurant.findOne({
       owner: req.user._id,
     });
@@ -302,9 +311,7 @@ export const getOrdersByRestaurant = async (req, res) => {
 
     const orders = await Order.find({
       restaurant: restaurant._id,
-    })
-      .populate("items.item")
-      .sort({ createdAt: -1 });
+    }).sort({ createdAt: -1 });
 
     res.json({
       success: true,
@@ -317,6 +324,7 @@ export const getOrdersByRestaurant = async (req, res) => {
     });
   }
 };
+
 
 
 
