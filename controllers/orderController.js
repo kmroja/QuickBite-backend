@@ -294,6 +294,7 @@ export const getOrdersByRestaurant = async (req, res) => {
 
     if (!restaurant) {
       return res.status(404).json({
+        success: false,
         message: "Restaurant not found for this user",
       });
     }
@@ -302,15 +303,19 @@ export const getOrdersByRestaurant = async (req, res) => {
       restaurant: restaurant._id,
     }).sort({ createdAt: -1 });
 
-    res.status(200).json(orders);
+    res.status(200).json({
+      success: true,
+      orders, // ✅ IMPORTANT
+    });
   } catch (error) {
     console.error("❌ Restaurant orders error:", error);
     res.status(500).json({
+      success: false,
       message: "Failed to fetch restaurant orders",
-      error: error.message,
     });
   }
 };
+
 
 
 
