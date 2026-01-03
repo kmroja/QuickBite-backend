@@ -288,6 +288,7 @@ export const updateAnyOrder = async (req, res) => {
 };
 export const getOrdersByRestaurant = async (req, res) => {
   try {
+    // req.user is restaurant owner
     const restaurant = await Restaurant.findOne({
       owner: req.user._id,
     });
@@ -295,26 +296,28 @@ export const getOrdersByRestaurant = async (req, res) => {
     if (!restaurant) {
       return res.status(404).json({
         success: false,
-        message: "Restaurant not found for this user",
+        message: "Restaurant not found",
       });
     }
 
     const orders = await Order.find({
       restaurant: restaurant._id,
-    }).sort({ createdAt: -1 });
+    })
+      .populate("items.item")
+      .sort({ createdAt: -1 });
 
-    res.status(200).json({
+    res.json({
       success: true,
-      orders, // ✅ IMPORTANT
+      orders,
     });
-  } catch (error) {
-    console.error("❌ Restaurant orders error:", error);
+  } catch (err) {
     res.status(500).json({
       success: false,
-      message: "Failed to fetch restaurant orders",
+      message: err.message,
     });
   }
 };
+
 
 
 
