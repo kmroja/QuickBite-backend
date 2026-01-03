@@ -6,16 +6,26 @@ import { CartItem } from '../modals/cartItem.js';
 // ----------------------------
 export const getCart = asyncHandler(async (req, res) => {
   const items = await CartItem.find({ user: req.user._id })
-    .populate('item');
+    .populate({
+      path: "item",
+      select: "name price imageUrl restaurant",
+    });
 
   res.json(
     items.map(ci => ({
       _id: ci._id,
-      item: ci.item,
       quantity: ci.quantity,
+      item: {
+        _id: ci.item._id,
+        name: ci.item.name,
+        price: ci.item.price,
+        imageUrl: ci.item.imageUrl,
+        restaurantId: ci.item.restaurant, // 🔥 THIS FIX
+      },
     }))
   );
 });
+
 
 
 // ----------------------------
