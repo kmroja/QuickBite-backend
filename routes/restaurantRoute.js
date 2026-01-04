@@ -47,7 +47,11 @@ router.get(
   getRestaurantByOwner
 );
 
-
+router.get(
+  "/me",
+  authMiddleware(["restaurant", "admin"]),
+  getMyRestaurant
+);
 // ======================================================
 // ⭐ PUBLIC ROUTES
 // ======================================================
@@ -68,11 +72,7 @@ router.post(
 // ======================================================
 // ⭐ GET LOGGED-IN RESTAURANT PROFILE
 // ======================================================
-router.get(
-  "/me",
-  authMiddleware(["restaurant", "admin"]),
-  getMyRestaurant
-);
+
 
 router.put(
   "/:id",

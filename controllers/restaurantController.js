@@ -221,7 +221,6 @@ export const getMyRestaurant = async (req, res) => {
   try {
     const restaurant = await Restaurant.findOne({
       owner: req.user._id,
-      status: "approved",
     });
 
     if (!restaurant) {
@@ -243,3 +242,4 @@ export const getMyRestaurant = async (req, res) => {
     });
   }
 };
+
