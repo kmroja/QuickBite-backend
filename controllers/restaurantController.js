@@ -26,7 +26,7 @@ export const createRestaurant = async (req, res) => {
       address,
       phone,
       cuisine,
-      imageUrl,
+      image: imageUrl,
       owner: req.user._id,
     });
 
@@ -216,3 +216,30 @@ export const getRestaurantByOwner = async (req, res) => {
   }
 };
 
+// ⭐ GET LOGGED-IN RESTAURANT (ME)
+export const getMyRestaurant = async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findOne({
+      owner: req.user._id,
+      status: "approved",
+    });
+
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: "Restaurant not found for this account",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      restaurant,
+    });
+  } catch (err) {
+    console.error("GET /restaurants/me error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch restaurant",
+    });
+  }
+};

@@ -10,7 +10,8 @@ import {
   applyRestaurant,
   getPendingRestaurants,
   approveRestaurant,
-  getRestaurantByOwner
+  getRestaurantByOwner,
+  getMyRestaurant
 } from "../controllers/restaurantController.js";
 
 const router = express.Router();
@@ -63,6 +64,14 @@ router.post(
   authMiddleware(["admin", "restaurant"]),
   upload.single("image"),
   createRestaurant
+);
+// ======================================================
+// ⭐ GET LOGGED-IN RESTAURANT PROFILE
+// ======================================================
+router.get(
+  "/me",
+  authMiddleware(["restaurant", "admin"]),
+  getMyRestaurant
 );
 
 router.put(
