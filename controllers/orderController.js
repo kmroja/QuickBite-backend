@@ -69,7 +69,7 @@ const orderItems = items.map((i) => ({
     name: i.item.name,
     price: Number(i.item.price),
     imageUrl: i.item.imageUrl || "",
-    
+    restaurantId: i.item.restaurantId,
   },
   quantity: Number(i.quantity),
 }));
