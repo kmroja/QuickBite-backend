@@ -8,6 +8,7 @@ import {
   updateOrder,
   updateAnyOrder,
   getOrdersByRestaurant,
+  updateOrderStatus, // ✅ ADD THIS
 } from "../controllers/orderController.js";
 
 import authMiddleware from "../middleware/auth.js";
@@ -32,6 +33,13 @@ orderRouter.get(
   "/restaurant",
   authMiddleware(["restaurant", "admin"]),
   getOrdersByRestaurant
+);
+
+// ✅ NEW: RESTAURANT UPDATE ORDER STATUS
+orderRouter.put(
+  "/:id/status",
+  authMiddleware(["restaurant", "admin"]),
+  updateOrderStatus
 );
 
 /* ================= USER CHECKOUT ================= */
@@ -60,6 +68,7 @@ orderRouter.get(
   getOrderById
 );
 
+// ❗ user can update ONLY own order (address etc.)
 orderRouter.put(
   "/:id",
   authMiddleware(["user"]),
