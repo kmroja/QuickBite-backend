@@ -147,9 +147,40 @@ export const updateItem = async (req, res) => {
     item.price = req.body.price || item.price;
     item.category = req.body.category || item.category;
 
-  if (req.file) {
-  item.imageUrl = req.file.path; // ✅ Cloudinary URL
-}
+// ⭐ UPDATE ITEM
+export const updateItem = async (req, res) => {
+  try {
+    const item = await Item.findById(req.params.id);
+    if (!item) return res.status(404).json({ message: "Item not found" });
+
+    if (req.user.role === "restaurant") {
+      const restaurant = await Restaurant.findOne({ owner: req.user._id });
+      if (!restaurant || String(item.restaurant) !== String(restaurant._id)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    }
+
+    item.name = req.body.name || item.name;
+    item.description = req.body.description || item.description;
+    item.price = req.body.price || item.price;
+    item.category = req.body.category || item.category;
+
+    // ✅ FIXED IMAGE UPLOAD
+    if (req.file) {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "quickbite/items",
+      });
+      item.imageUrl = result.secure_url;
+    }
+
+    await item.save();
+    res.json({ success: true, item });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to update item" });
+  }
+};
+
 
 
     await item.save();
