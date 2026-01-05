@@ -53,7 +53,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // ✅ SERVE UPLOADS (ONLY ONCE)
 // app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 // ✅ API Routes
 app.use("/api/user", userRouter);
 app.use("/api/admin", adminRouter);
