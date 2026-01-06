@@ -3,6 +3,7 @@ import RestaurantApplication from "../modals/restaurantApplicationModel.js";
 import Restaurant from "../modals/restaurantModel.js";
 import userModel from "../modals/userModel.js";
 import bcrypt from "bcryptjs";
+import cloudinary from "../config/cloudinary.js";
 
 /**
  * Apply public
@@ -41,19 +42,27 @@ export const applyForRestaurant = async (req, res) => {
         .json({ success: false, message: "You have already applied with this email." });
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const imagePath = req.file ? `/uploads/${req.file.filename}` : "";
+    let imageUrl = "";
 
-    const newApp = new RestaurantApplication({
-      restaurantName,
-      ownerName,
-      email,
-      phone,
-      address,
-      cuisine,
-      description,
-      password: hashedPassword,
-      image: imagePath,
-    });
+if (req.file) {
+  const result = await cloudinary.uploader.upload(req.file.path, {
+    folder: "quickbite/restaurant-applications",
+  });
+  imageUrl = result.secure_url;
+}
+
+const newApp = new RestaurantApplication({
+  restaurantName,
+  ownerName,
+  email,
+  phone,
+  address,
+  cuisine,
+  description,
+  password: hashedPassword,
+  image: imageUrl,
+});
+
 
     await newApp.save();
 
