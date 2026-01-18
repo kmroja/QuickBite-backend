@@ -63,7 +63,6 @@ const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // ✅ FIXED: use userModel
     const user = await userModel.findOne({ email });
     if (!user) {
       return res.status(401).json({
@@ -82,15 +81,24 @@ const loginUser = async (req, res) => {
 
     let restaurantId = null;
 
-    // ✅ Restaurant role handling
     if (user.role === "restaurant") {
       const restaurant = await Restaurant.findOne({ owner: user._id });
+
       if (!restaurant) {
         return res.status(404).json({
           success: false,
           message: "Restaurant not found for this account",
         });
       }
+
+      // 🔥 IMPORTANT CHECK
+      if (restaurant.status !== "approved") {
+        return res.status(403).json({
+          success: false,
+          message: "Restaurant not approved yet",
+        });
+      }
+
       restaurantId = restaurant._id;
     }
 
@@ -110,6 +118,7 @@ const loginUser = async (req, res) => {
     });
   }
 };
+
 
 
 
