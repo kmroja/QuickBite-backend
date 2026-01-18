@@ -5,7 +5,7 @@ import cloudinary from "../config/cloudinary.js";
 const storage = new CloudinaryStorage({
   cloudinary,
   params: {
-    folder: "quickbite",
+    folder: "quickbite/items",
     allowed_formats: ["jpg", "png", "jpeg", "webp"],
   },
 });

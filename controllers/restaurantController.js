@@ -11,14 +11,12 @@ export const createRestaurant = async (req, res) => {
     if (!name || !address) {
       return res.status(400).json({ message: "Required fields missing" });
     }
+let imageUrl = "";
 
-    let imageUrl = "";
-    if (req.file) {
-      const upload = await cloudinary.uploader.upload(req.file.path, {
-        folder: "quickbite/restaurants",
-      });
-      imageUrl = upload.secure_url;
-    }
+if (req.file) {
+  imageUrl = req.file.path; // Cloudinary URL
+}
+
 
     const restaurant = await Restaurant.create({
       name,

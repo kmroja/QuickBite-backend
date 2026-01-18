@@ -29,13 +29,8 @@ export const createItem = async (req, res) => {
       restaurantId = req.body.restaurantId;
     }
 
-    let imageUrl = "";
-    if (req.file) {
-      const upload = await cloudinary.uploader.upload(req.file.path, {
-        folder: "quickbite/items",
-      });
-      imageUrl = upload.secure_url;
-    }
+    // ✅ FIXED IMAGE LOGIC (Cloudinary URL directly)
+    const imageUrl = req.file ? req.file.path : "";
 
     const newItem = await Item.create({
       name,
@@ -52,7 +47,7 @@ export const createItem = async (req, res) => {
 
     res.status(201).json({ success: true, item: newItem });
   } catch (err) {
-    console.error(err);
+    console.error("Create item error:", err);
     res.status(500).json({ message: "Failed to create item" });
   }
 };
@@ -146,17 +141,17 @@ export const updateItem = async (req, res) => {
     item.description = req.body.description || item.description;
     item.price = req.body.price || item.price;
     item.category = req.body.category || item.category;
-if (req.file) {
-      const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: "quickbite/items",
-      });
-      item.imageUrl = result.secure_url;
-    }
 
+    // ✅ FIXED IMAGE UPDATE
+    if (req.file) {
+      item.imageUrl = req.file.path; // Cloudinary URL
+    }
 
     await item.save();
     res.json({ success: true, item });
   } catch (err) {
+    console.error("Update item error:", err);
     res.status(500).json({ message: "Failed to update item" });
   }
 };
+

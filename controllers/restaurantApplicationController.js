@@ -42,14 +42,14 @@ export const applyForRestaurant = async (req, res) => {
         .json({ success: false, message: "You have already applied with this email." });
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    let imageUrl = "";
+    
+
+let imageUrl = "";
 
 if (req.file) {
-  const result = await cloudinary.uploader.upload(req.file.path, {
-    folder: "quickbite/restaurant-applications",
-  });
-  imageUrl = result.secure_url;
+  imageUrl = req.file.path; // already Cloudinary URL
 }
+
 
 const newApp = new RestaurantApplication({
   restaurantName,
