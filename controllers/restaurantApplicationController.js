@@ -87,17 +87,21 @@ export const approveApplication = async (req, res) => {
     const { id } = req.params;
 
     const app = await RestaurantApplication.findById(id);
-    if (!app)
-      return res
-        .status(404)
-        .json({ success: false, message: "Application not found." });
+    if (!app) {
+      return res.status(404).json({
+        success: false,
+        message: "Application not found.",
+      });
+    }
 
-    if (app.status === "approved")
-      return res
-        .status(400)
-        .json({ success: false, message: "Already approved." });
+    if (app.status === "approved") {
+      return res.status(400).json({
+        success: false,
+        message: "Already approved.",
+      });
+    }
 
-    // Check if restaurant already exists by name
+    // 🔹 1. Find or create restaurant
     let restaurant = await Restaurant.findOne({ name: app.restaurantName });
 
     if (!restaurant) {
@@ -108,56 +112,57 @@ export const approveApplication = async (req, res) => {
         description: app.description || "",
         image: app.image || "",
         owner: null,
-        menuItems: [],
+        menu: [],
         rating: 0,
         totalReviews: 0,
+        status: "approved", // ✅ VERY IMPORTANT
       });
+    } else {
+      // ✅ If restaurant already exists, force approve it
+      restaurant.status = "approved";
     }
 
-    // Create restaurant user if not exists
+    // 🔹 2. Find or create restaurant user
     let restaurantUser = await userModel.findOne({ email: app.email });
 
     if (!restaurantUser) {
       restaurantUser = await userModel.create({
         username: app.ownerName,
         email: app.email,
-        password: app.password, // Already hashed
+        password: app.password, // already hashed
         role: "restaurant",
       });
     } else {
-      // Update existing user to restaurant role
       if (restaurantUser.role !== "restaurant") {
         restaurantUser.role = "restaurant";
         await restaurantUser.save();
       }
     }
 
-    // Link owner to restaurant
+    // 🔹 3. Link restaurant to owner
     restaurant.owner = restaurantUser._id;
     await restaurant.save();
 
-    // Update application status
+    // 🔹 4. Update application status
     app.status = "approved";
     await app.save();
 
     return res.status(200).json({
       success: true,
-      message: "Application approved. Restaurant created successfully.",
-      application: app,
-      restaurant,
-      restaurantUser: {
-        _id: restaurantUser._id,
-        email: restaurantUser.email,
-        role: restaurantUser.role,
-      },
+      message: "Application approved successfully",
+      restaurantId: restaurant._id,
+      ownerId: restaurantUser._id,
     });
   } catch (err) {
     console.error("❌ Approve Error:", err);
-    return res
-      .status(500)
-      .json({ success: false, message: "Server Error", error: err.message });
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: err.message,
+    });
   }
 };
+
 
 /**
  * Get only pending
