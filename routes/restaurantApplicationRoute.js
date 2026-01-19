@@ -10,14 +10,14 @@ import {
   approveApplication,
   rejectApplication,
 } from "../controllers/restaurantApplicationController.js";
-
+import upload from "../middleware/cloudinaryUpload.js";
 import { adminMiddleware } from "../middleware/auth.js";
 
 const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const upload = multer({ dest: "temp/" });
+
 
 router.post("/apply", upload.single("image"), applyForRestaurant);
 

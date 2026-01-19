@@ -47,8 +47,9 @@ export const applyForRestaurant = async (req, res) => {
 let imageUrl = "";
 
 if (req.file) {
-  imageUrl = req.file.path; // already Cloudinary URL
+  imageUrl = req.file.path; // ✅ Cloudinary URL
 }
+
 
 
 const newApp = new RestaurantApplication({
@@ -110,7 +111,7 @@ export const approveApplication = async (req, res) => {
         address: app.address,
         cuisine: app.cuisine,
         description: app.description || "",
-        image: app.image || "",
+        image: app.image && app.image.startsWith("http") ? app.image : "",
         owner: null,
         menu: [],
         rating: 0,
