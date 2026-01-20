@@ -70,29 +70,52 @@ export const getRestaurantById = async (req, res) => {
 export const updateRestaurant = async (req, res) => {
   try {
     const restaurant = await Restaurant.findById(req.params.id);
-    if (!restaurant)
-      return res.status(404).json({ success: false, message: "Restaurant not found" });
-
-    // Role-based protection
-    if (req.user.role !== "admin" && restaurant.owner.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: "Access denied" });
+    if (!restaurant) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Restaurant not found" });
     }
 
-    const updates = { ...req.body };
+    // 🔐 Role check
+    if (
+      req.user.role !== "admin" &&
+      restaurant.owner.toString() !== req.user._id.toString()
+    ) {
+      return res
+        .status(403)
+        .json({ success: false, message: "Access denied" });
+    }
 
+    // ✅ Update fields safely
+    if (req.body.name) restaurant.name = req.body.name;
+    if (req.body.description) restaurant.description = req.body.description;
+    if (req.body.cuisine) restaurant.cuisine = req.body.cuisine;
+    if (req.body.address) restaurant.address = req.body.address;
+
+    // 🖼 CLOUDINARY IMAGE UPDATE
     if (req.file) {
-      if (restaurant.image) {
-        const oldPath = path.join("uploads", path.basename(restaurant.image));
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-      }
-      updates.image = getFullImageUrl(req, req.file.filename);
+      const uploadResult = await cloudinary.uploader.upload(
+        `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`,
+        {
+          folder: "quickbite/restaurants",
+        }
+      );
+
+      restaurant.image = uploadResult.secure_url;
     }
 
-    const updated = await Restaurant.findByIdAndUpdate(req.params.id, updates, { new: true });
-    res.json({ success: true, restaurant: updated });
+    await restaurant.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Restaurant updated successfully",
+      restaurant,
+    });
   } catch (err) {
-    console.error("Error updating restaurant:", err);
-    res.status(500).json({ success: false, message: "Failed to update restaurant" });
+    console.error("❌ Update Restaurant Error:", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to update restaurant" });
   }
 };
 
