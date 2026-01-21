@@ -1,6 +1,6 @@
 import express from "express";
-import multer from "multer";
 import authMiddleware from "../middleware/auth.js";
+import uploadRestaurant from "../middleware/uploadRestaurant.js";
 import {
   createRestaurant,
   getAllRestaurants,
@@ -16,72 +16,41 @@ import {
 
 const router = express.Router();
 
-const upload = multer({ dest: "temp/" });
-
-
-// ======================================================
-// ⭐ APPLY FOR RESTAURANT (USER)
-// ======================================================
+// ⭐ APPLY
 router.post(
   "/apply",
   authMiddleware(["user"]),
-  upload.single("image"),
+  uploadRestaurant.single("image"),
   applyRestaurant
 );
 
-
-// ======================================================
-// ⭐ ADMIN ROUTES
-// ======================================================
+// ⭐ ADMIN
 router.get("/pending", authMiddleware(["admin"]), getPendingRestaurants);
 router.put("/approve/:id", authMiddleware(["admin"]), approveRestaurant);
 
+// ⭐ DASHBOARD
+router.get("/owner/:ownerId", authMiddleware(["restaurant", "admin"]), getRestaurantByOwner);
+router.get("/me", authMiddleware(["restaurant", "admin"]), getMyRestaurant);
 
-// ======================================================
-// ⭐ MUST BE BEFORE ANY :id ROUTE
-// ⭐ GET RESTAURANT BY OWNER (RESTAURANT DASHBOARD)
-// ======================================================
-router.get(
-  "/owner/:ownerId",
-  authMiddleware(["restaurant", "admin"]),
-  getRestaurantByOwner
-);
-
-router.get(
-  "/me",
-  authMiddleware(["restaurant", "admin"]),
-  getMyRestaurant
-);
-// ======================================================
-// ⭐ PUBLIC ROUTES
-// ======================================================
+// ⭐ PUBLIC
 router.get("/", getAllRestaurants);
-
-
-// ======================================================
-// ⭐ ROUTES USING :id (KEEP LAST)
-// ======================================================
 router.get("/:id", getRestaurantById);
 
+// ⭐ CREATE & UPDATE
 router.post(
   "/",
   authMiddleware(["admin", "restaurant"]),
-  upload.single("image"),
+  uploadRestaurant.single("image"),
   createRestaurant
 );
-// ======================================================
-// ⭐ GET LOGGED-IN RESTAURANT PROFILE
-// ======================================================
-
 
 router.put(
   "/:id",
   authMiddleware(["admin", "restaurant"]),
-  upload.single("image"),
+  uploadRestaurant.single("image"),
   updateRestaurant
 );
 
 router.delete("/:id", authMiddleware(["admin"]), deleteRestaurant);
-
 
 export default router;
