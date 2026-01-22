@@ -6,6 +6,9 @@ import Restaurant from "../modals/restaurantModel.js";
 // ⭐ CREATE ITEM
 export const createItem = async (req, res) => {
   try {
+     console.log("BODY:", req.body);
+    console.log("USER:", req.user);
+    console.log("FILE:", req.file);
     const { name, description, price, category } = req.body;
 
     if (!name || !price || !category) {

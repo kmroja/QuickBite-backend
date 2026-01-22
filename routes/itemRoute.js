@@ -21,7 +21,13 @@ itemRouter.use(authMiddleware(["admin", "restaurant"]));
 itemRouter.get("/my-items", getItems);
 
 // ➕ ADD ITEM
-itemRouter.post("/", upload.single("image"), createItem);
+itemRouter.post(
+  "/",
+  authMiddleware(["admin", "restaurant"]),
+  upload.single("image"),
+  createItem
+);
+
 
 // ✏️ UPDATE ITEM
 itemRouter.put("/:id", upload.single("image"), updateItem);
