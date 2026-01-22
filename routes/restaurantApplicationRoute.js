@@ -1,8 +1,4 @@
 import express from "express";
-import multer from "multer";
-import path from "path";
-import { fileURLToPath } from "url";
-
 import {
   applyForRestaurant,
   getAllApplications,
@@ -10,18 +6,15 @@ import {
   approveApplication,
   rejectApplication,
 } from "../controllers/restaurantApplicationController.js";
-import upload from "../middleware/cloudinaryUpload.js";
+import upload from "../middleware/uploadRestaurant.js";
 import { adminMiddleware } from "../middleware/auth.js";
 
 const router = express.Router();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
-
-
+// 📝 Apply for restaurant (user uploads image)
 router.post("/apply", upload.single("image"), applyForRestaurant);
 
-// Admin protected
+// 🔐 Admin routes
 router.get("/", adminMiddleware, getAllApplications);
 router.get("/pending", adminMiddleware, getPendingApplications);
 router.patch("/:id/approve", adminMiddleware, approveApplication);

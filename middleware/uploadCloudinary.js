@@ -4,12 +4,13 @@ import cloudinary from "../config/cloudinary.js";
 
 const storage = new CloudinaryStorage({
   cloudinary,
-  params: {
-    folder: "quickbite/items",
+  params: async (req, file) => ({
+    folder: "quickbite",
     allowed_formats: ["jpg", "jpeg", "png", "webp"],
-  },
+    public_id: `${Date.now()}-${file.originalname}`,
+  }),
 });
 
-const itemUpload = multer({ storage });
+const upload = multer({ storage });
 
-export default itemUpload;
+export default upload;

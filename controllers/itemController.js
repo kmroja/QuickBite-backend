@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import Item from "../modals/item.js";
 import Restaurant from "../modals/restaurantModel.js";
-import cloudinary from "../config/cloudinary.js";
+
 
 // ⭐ CREATE ITEM
 export const createItem = async (req, res) => {
