@@ -6,10 +6,10 @@ const storage = new CloudinaryStorage({
   cloudinary,
   params: {
     folder: "quickbite/items",
-    allowed_formats: ["jpg", "png", "jpeg", "webp"],
+    allowed_formats: ["jpg", "jpeg", "png", "webp"],
   },
 });
 
-const upload = multer({ storage });
+const itemUpload = multer({ storage });
 
-export default upload;
+export default itemUpload;
