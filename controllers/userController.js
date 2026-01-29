@@ -64,60 +64,36 @@ const loginUser = async (req, res) => {
     const { email, password } = req.body;
 
     const user = await userModel.findOne({ email });
-    if (!user) {
+    if (!user)
       return res.status(401).json({
         success: false,
         message: "Invalid credentials",
       });
-    }
 
     const match = await bcrypt.compare(password, user.password);
-    if (!match) {
+    if (!match)
       return res.status(401).json({
         success: false,
         message: "Invalid credentials",
       });
-    }
-
-    let restaurantId = null;
-
-    if (user.role === "restaurant") {
-      const restaurant = await Restaurant.findOne({ owner: user._id });
-
-      if (!restaurant) {
-        return res.status(404).json({
-          success: false,
-          message: "Restaurant not found for this account",
-        });
-      }
-
-      // 🔥 IMPORTANT CHECK
-      if (restaurant.status !== "approved") {
-        return res.status(403).json({
-          success: false,
-          message: "Restaurant not approved yet",
-        });
-      }
-
-      restaurantId = restaurant._id;
-    }
 
     const token = createToken(user);
 
     res.json({
       success: true,
       token,
-      user,
-      restaurantId,
+      user: {
+        _id: user._id,
+        role: user.role,
+        email: user.email,
+      },
     });
   } catch (err) {
     console.error("Login error:", err);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 
 
 

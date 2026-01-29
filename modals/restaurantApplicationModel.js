@@ -4,13 +4,21 @@ const restaurantApplicationSchema = new mongoose.Schema(
   {
     restaurantName: { type: String, required: true },
     ownerName: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
+
+    // 🔑 LINK TO USER
+    owner: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      unique: true,
+    },
+
     phone: { type: String, required: true },
     address: { type: String, required: true },
     cuisine: { type: String, required: true },
     description: { type: String },
-    password: { type: String, required: true },
     image: { type: String },
+
     status: {
       type: String,
       enum: ["pending", "approved", "rejected"],
@@ -20,4 +28,7 @@ const restaurantApplicationSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("RestaurantApplication", restaurantApplicationSchema);
+export default mongoose.model(
+  "RestaurantApplication",
+  restaurantApplicationSchema
+);

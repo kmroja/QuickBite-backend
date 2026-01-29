@@ -10,159 +10,109 @@ import cloudinary from "../config/cloudinary.js";
  */
 export const applyForRestaurant = async (req, res) => {
   try {
-    const {
+    const { restaurantName, ownerName, phone, address, cuisine, description } =
+      req.body;
+
+    if (!restaurantName || !ownerName || !phone || !address || !cuisine) {
+      return res.status(400).json({
+        success: false,
+        message: "All required fields must be provided",
+      });
+    }
+
+    const userId = req.user._id;
+
+    const existing = await RestaurantApplication.findOne({ owner: userId });
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message: "You have already applied",
+      });
+    }
+
+    const imageUrl = req.file ? req.file.path : "";
+
+    const application = await RestaurantApplication.create({
       restaurantName,
       ownerName,
-      email,
+      owner: userId,
       phone,
       address,
       cuisine,
       description,
-      password,
-    } = req.body;
+      image: imageUrl,
+      status: "pending",
+    });
 
-    if (
-      !restaurantName ||
-      !ownerName ||
-      !email ||
-      !phone ||
-      !address ||
-      !cuisine ||
-      !password
-    ) {
-      return res
-        .status(400)
-        .json({ success: false, message: "All required fields must be provided." });
-    }
-
-    const existing = await RestaurantApplication.findOne({ email });
-    if (existing)
-      return res
-        .status(400)
-        .json({ success: false, message: "You have already applied with this email." });
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    
-
-let imageUrl = "";
-
-if (req.file) {
-  imageUrl = req.file.path; // ✅ Cloudinary URL
-}
-
-
-
-const newApp = new RestaurantApplication({
-  restaurantName,
-  ownerName,
-  email,
-  phone,
-  address,
-  cuisine,
-  description,
-  password: hashedPassword,
-  image: imageUrl,
-});
-
-
-    await newApp.save();
-
-    return res.status(201).json({
+    res.status(201).json({
       success: true,
-      message: "Application submitted successfully! Awaiting admin approval.",
-      application: newApp,
+      message: "Application submitted. Awaiting approval",
+      application,
     });
   } catch (err) {
-    console.error("❌ Apply Error:", err);
-    return res
-      .status(500)
-      .json({ success: false, message: "Server Error", error: err.message });
+    console.error("Apply error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 
 /**
  * APPROVE – Create Restaurant + Restaurant User + Link
  */
 export const approveApplication = async (req, res) => {
   try {
-    const { id } = req.params;
+    const app = await RestaurantApplication.findById(req.params.id);
+    if (!app)
+      return res.status(404).json({ success: false, message: "Not found" });
 
-    const app = await RestaurantApplication.findById(id);
-    if (!app) {
-      return res.status(404).json({
-        success: false,
-        message: "Application not found.",
-      });
-    }
+    if (app.status === "approved")
+      return res
+        .status(400)
+        .json({ success: false, message: "Already approved" });
 
-    if (app.status === "approved") {
+    const user = await userModel.findById(app.owner);
+    if (!user)
+      return res.status(404).json({ success: false, message: "User not found" });
+
+    const existingRestaurant = await Restaurant.findOne({ owner: user._id });
+    if (existingRestaurant) {
       return res.status(400).json({
         success: false,
-        message: "Already approved.",
+        message: "Restaurant already exists for this user",
       });
     }
 
-    // 🔹 1. Find or create restaurant
-    let restaurant = await Restaurant.findOne({ name: app.restaurantName });
+    // 🔥 UPGRADE ROLE
+    user.role = "restaurant";
+    await user.save();
 
-    if (!restaurant) {
-      restaurant = await Restaurant.create({
-        name: app.restaurantName,
-        address: app.address,
-        cuisine: app.cuisine,
-        description: app.description || "",
-        image: app.image && app.image.startsWith("http") ? app.image : "",
-        owner: null,
-        menu: [],
-        rating: 0,
-        totalReviews: 0,
-        status: "approved", // ✅ VERY IMPORTANT
-      });
-    } else {
-      // ✅ If restaurant already exists, force approve it
-      restaurant.status = "approved";
-    }
+    // 🔥 CREATE RESTAURANT
+    const restaurant = await Restaurant.create({
+      name: app.restaurantName,
+      address: app.address,
+      cuisine: app.cuisine,
+      description: app.description || "",
+      image: app.image || "",
+      owner: user._id,
+      status: "approved",
+      menu: [],
+    });
 
-    // 🔹 2. Find or create restaurant user
-    let restaurantUser = await userModel.findOne({ email: app.email });
-
-    if (!restaurantUser) {
-      restaurantUser = await userModel.create({
-        username: app.ownerName,
-        email: app.email,
-        password: app.password, // already hashed
-        role: "restaurant",
-      });
-    } else {
-      if (restaurantUser.role !== "restaurant") {
-        restaurantUser.role = "restaurant";
-        await restaurantUser.save();
-      }
-    }
-
-    // 🔹 3. Link restaurant to owner
-    restaurant.owner = restaurantUser._id;
-    await restaurant.save();
-
-    // 🔹 4. Update application status
     app.status = "approved";
     await app.save();
 
-    return res.status(200).json({
+    res.json({
       success: true,
-      message: "Application approved successfully",
+      message: "Approved successfully",
       restaurantId: restaurant._id,
-      ownerId: restaurantUser._id,
     });
   } catch (err) {
-    console.error("❌ Approve Error:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: err.message,
-    });
+    console.error("Approve error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+
 
 
 /**
