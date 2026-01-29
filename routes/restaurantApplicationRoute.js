@@ -7,12 +7,17 @@ import {
   rejectApplication,
 } from "../controllers/restaurantApplicationController.js";
 import upload from "../middleware/uploadRestaurant.js";
-import { adminMiddleware } from "../middleware/auth.js";
+import authMiddleware, { adminMiddleware } from "../middleware/auth.js";
 
 const router = express.Router();
 
-// 📝 Apply for restaurant (user uploads image)
-router.post("/apply", upload.single("image"), applyForRestaurant);
+// ✅ USER MUST BE LOGGED IN
+router.post(
+  "/apply",
+  authMiddleware(["user"]),
+  upload.single("image"),
+  applyForRestaurant
+);
 
 // 🔐 Admin routes
 router.get("/", adminMiddleware, getAllApplications);
