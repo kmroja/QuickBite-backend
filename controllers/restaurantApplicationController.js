@@ -4,7 +4,7 @@ import Restaurant from "../modals/restaurantModel.js";
 import userModel from "../modals/userModel.js";
 import bcrypt from "bcryptjs";
 import cloudinary from "../config/cloudinary.js";
-
+import mongoose from "mongoose";
 /**
  * Apply public
  */
@@ -59,6 +59,7 @@ export const applyForRestaurant = async (req, res) => {
 /**
  * APPROVE – Create Restaurant + Restaurant User + Link
  */
+
 export const approveApplication = async (req, res) => {
   try {
     const app = await RestaurantApplication.findById(req.params.id);
@@ -74,7 +75,10 @@ export const approveApplication = async (req, res) => {
     if (!user)
       return res.status(404).json({ success: false, message: "User not found" });
 
-    const existingRestaurant = await Restaurant.findOne({ owner: user._id });
+    const existingRestaurant = await Restaurant.findOne({
+      owner: new mongoose.Types.ObjectId(user._id),
+    });
+
     if (existingRestaurant) {
       return res.status(400).json({
         success: false,
@@ -86,14 +90,14 @@ export const approveApplication = async (req, res) => {
     user.role = "restaurant";
     await user.save();
 
-    // 🔥 CREATE RESTAURANT
+    // 🔥 CREATE RESTAURANT (FIXED)
     const restaurant = await Restaurant.create({
       name: app.restaurantName,
       address: app.address,
       cuisine: app.cuisine,
       description: app.description || "",
       image: app.image || "",
-      owner: user._id,
+      owner: new mongoose.Types.ObjectId(user._id), // ✅ FIX
       status: "approved",
       menu: [],
     });
