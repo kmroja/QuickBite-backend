@@ -4,7 +4,6 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import validator from "validator";
 
-
 // 🔐 Create JWT token
 const createToken = (user) => {
   return jwt.sign(
@@ -14,7 +13,9 @@ const createToken = (user) => {
   );
 };
 
+// ==========================
 // REGISTER USER
+// ==========================
 const registerUser = async (req, res) => {
   const { username, password, email, role, adminKey } = req.body;
 
@@ -27,7 +28,10 @@ const registerUser = async (req, res) => {
       return res.json({ success: false, message: "Invalid email" });
 
     if (password.length < 8)
-      return res.json({ success: false, message: "Password must be 8 characters" });
+      return res.json({
+        success: false,
+        message: "Password must be at least 8 characters",
+      });
 
     let userRole = "user";
 
@@ -40,25 +44,33 @@ const registerUser = async (req, res) => {
       userRole = "admin";
     }
 
-    // ❌ DO NOT HASH HERE — pre-save middleware will hash automatically
     const user = await userModel.create({
       username,
       email,
-      password,  // raw password → schema will hash it
+      password, // hashed by schema middleware
       role: userRole,
     });
 
     const token = createToken(user);
-    res.status(201).json({ success: true, user, token });
 
+    res.status(201).json({
+      success: true,
+      token,
+      user: {
+        _id: user._id,
+        email: user.email,
+        role: user.role,
+      },
+    });
   } catch (err) {
     console.error("Register Error:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-
-// LOGIN USER
+// ==========================
+// LOGIN USER ✅ FIXED
+// ==========================
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -79,6 +91,20 @@ const loginUser = async (req, res) => {
 
     const token = createToken(user);
 
+    // 🔥 FIND LINKED RESTAURANT (IMPORTANT FIX)
+    let restaurantId = null;
+
+    if (user.role === "restaurant") {
+      const restaurant = await Restaurant.findOne({
+        owner: user._id,
+        status: "approved",
+      });
+
+      if (restaurant) {
+        restaurantId = restaurant._id;
+      }
+    }
+
     res.json({
       success: true,
       token,
@@ -87,6 +113,7 @@ const loginUser = async (req, res) => {
         role: user.role,
         email: user.email,
       },
+      restaurantId, // ✅ FRONTEND NEEDS THIS
     });
   } catch (err) {
     console.error("Login error:", err);
@@ -94,25 +121,18 @@ const loginUser = async (req, res) => {
   }
 };
 
-
-
-
-
-
+// ==========================
 // VERIFY TOKEN
+// ==========================
 const verifyToken = async (req, res) => {
   try {
     const token = req.headers.authorization?.split(" ")[1];
-
     if (!token)
       return res.status(401).json({ success: false, message: "No token" });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await userModel
-      .findById(decoded._id)
-      .select("-password");
-
+    const user = await userModel.findById(decoded._id).select("-password");
     if (!user)
       return res
         .status(401)
@@ -120,13 +140,13 @@ const verifyToken = async (req, res) => {
 
     res.json({ success: true, user });
   } catch (err) {
-    return res
-      .status(401)
-      .json({ success: false, message: "Invalid token" });
+    res.status(401).json({ success: false, message: "Invalid token" });
   }
 };
 
-// GET PROFILE (logged-in user)
+// ==========================
+// GET PROFILE
+// ==========================
 const getProfile = async (req, res) => {
   try {
     const user = await userModel.findById(req.user._id).select("-password");
@@ -142,7 +162,9 @@ const getProfile = async (req, res) => {
   }
 };
 
-// ADMIN: GET ALL USERS
+// ==========================
+// ADMIN – GET ALL USERS
+// ==========================
 const getAllUsers = async (req, res) => {
   try {
     const users = await userModel.find().select("-password");
@@ -153,9 +175,9 @@ const getAllUsers = async (req, res) => {
   }
 };
 
-// --------------------------------------------------------------------
-// 🚀 EXPORT ALL FUNCTIONS (ONLY ONCE) — FIXES YOUR ERROR
-// --------------------------------------------------------------------
+// ==========================
+// EXPORTS
+// ==========================
 export {
   registerUser,
   loginUser,
