@@ -8,10 +8,18 @@ import mongoose from "mongoose";
 /**
  * Apply public
  */
+// controllers/restaurantApplicationController.js
+
 export const applyForRestaurant = async (req, res) => {
   try {
-    const { restaurantName, ownerName, phone, address, cuisine, description } =
-      req.body;
+    const {
+      restaurantName,
+      ownerName,
+      phone,
+      address,
+      cuisine,
+      description,
+    } = req.body;
 
     if (!restaurantName || !ownerName || !phone || !address || !cuisine) {
       return res.status(400).json({
@@ -30,7 +38,17 @@ export const applyForRestaurant = async (req, res) => {
       });
     }
 
-    const imageUrl = req.file ? req.file.path : "";
+    let imageUrl = "";
+
+    // 🔥 UPLOAD IMAGE TO CLOUDINARY
+    if (req.file) {
+      const uploadResult = await cloudinary.uploader.upload(
+        `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`,
+        { folder: "restaurant-applications" }
+      );
+
+      imageUrl = uploadResult.secure_url;
+    }
 
     const application = await RestaurantApplication.create({
       restaurantName,
@@ -50,8 +68,11 @@ export const applyForRestaurant = async (req, res) => {
       application,
     });
   } catch (err) {
-    console.error("Apply error:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("❌ Apply error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 
