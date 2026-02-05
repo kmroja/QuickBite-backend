@@ -61,7 +61,7 @@ app.use("/api/cart", cartRouter);
 app.use("/api/items", itemRouter);
 app.use("/api/orders", orderRouter);
 app.use("/api/reviews", reviewRoutes);
-app.use("/api/food-review", foodReviewRoutes);
+app.use("/api/food", foodReviewRoutes);
 app.use("/api/restaurants", restaurantRouter);
 app.use("/api/restaurant-applications", restaurantApplicationRouter);
 
