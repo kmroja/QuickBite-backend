@@ -1,44 +1,68 @@
 // server/middleware/authMiddleware.js
 // middleware/auth.js
 // middleware/auth.js
-import jwt from 'jsonwebtoken';
-import User from '../modals/userModel.js';
+import jwt from "jsonwebtoken";
+import User from "../modals/userModel.js";
 
-const authMiddleware = (roles = null) => {
-  return async (req, res, next) => {
-    try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith('Bearer ')) {
-        return res.status(401).json({ message: 'No token provided' });
-      }
+const authMiddleware = (allowedRoles = []) => async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
 
-      const token = authHeader.split(' ')[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-      const user = await User.findById(decoded._id).select('-password');
-      if (!user) {
-        return res.status(401).json({ message: 'User not found' });
-      }
-
-      if (roles) {
-        const allowed = Array.isArray(roles) ? roles : [roles];
-        if (!allowed.includes(user.role)) {
-          return res.status(403).json({ message: 'Forbidden' });
-        }
-      }
-
-      req.user = user;
-      next();
-    } catch (error) {
-      console.error('Auth error:', error.message);
-      res.status(401).json({ message: 'Authentication failed' });
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "Authentication failed" });
     }
-  };
+
+    const token = authHeader.split(" ")[1];
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const user = await User.findById(decoded.id || decoded._id).select(
+      "_id role"
+    );
+
+    if (!user) {
+      return res.status(401).json({ message: "Authentication failed" });
+    }
+
+    // ✅ Role check (if roles passed)
+    if (allowedRoles.length && !allowedRoles.includes(user.role)) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    req.user = user;
+    next();
+  } catch (error) {
+    console.error("AUTH ERROR:", error.message);
+    return res.status(401).json({ message: "Authentication failed" });
+  }
+};
+
+// ✅ Separate admin middleware
+export const adminMiddleware = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "Authentication failed" });
+    }
+
+    const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const user = await User.findById(decoded.id || decoded._id);
+
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+
+    req.user = user;
+    next();
+  } catch (error) {
+    return res.status(401).json({ message: "Authentication failed" });
+  }
 };
 
 export default authMiddleware;
-export const adminMiddleware = authMiddleware(['admin']);
-
 
 
 
